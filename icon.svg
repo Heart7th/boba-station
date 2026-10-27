@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- 波波奶茶站图标：粉色底，一杯黑糖珍珠奶茶（主体都在中间 80% 安全区内，可裁成圆形） -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff9cb6"/>
+      <stop offset="1" stop-color="#ff6f91"/>
+    </linearGradient>
+    <linearGradient id="tea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e2ad7c"/>
+      <stop offset="1" stop-color="#b9804f"/>
+    </linearGradient>
+    <linearGradient id="straw" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#4fc7a1"/>
+      <stop offset="1" stop-color="#2f9e7a"/>
+    </linearGradient>
+    <radialGradient id="pearl" cx="0.36" cy="0.32" r="0.75">
+      <stop offset="0" stop-color="#8a5a40"/>
+      <stop offset="0.55" stop-color="#4a2a1c"/>
+      <stop offset="1" stop-color="#2e170e"/>
+    </radialGradient>
+    <clipPath id="cup"><path d="M150 186 L362 186 L338 410 Q336 432 314 432 L198 432 Q176 432 174 410 Z"/></clipPath>
+    <g id="p"><circle r="19" fill="url(#pearl)"/><ellipse cx="-6" cy="-7" rx="6" ry="4" fill="#fff" opacity=".75"/></g>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- 背景小星光 -->
+  <g fill="#fff" opacity=".85">
+    <path d="M96 118 l7 19 19 7 -19 7 -7 19 -7 -19 -19 -7 19 -7z"/>
+    <path d="M418 330 l5 13 13 5 -13 5 -5 13 -5 -13 -13 -5 13 -5z"/>
+    <circle cx="410" cy="132" r="7"/>
+    <circle cx="104" cy="352" r="6"/>
+  </g>
+  <!-- 地上的影子 -->
+  <ellipse cx="256" cy="446" rx="118" ry="17" fill="#a3244f" opacity=".22"/>
+  <!-- 吸管（在杯盖后面） -->
+  <g transform="rotate(14 276 120)">
+    <rect x="262" y="30" width="30" height="150" rx="9" fill="url(#straw)"/>
+    <rect x="268" y="38" width="6" height="134" rx="3" fill="#fff" opacity=".55"/>
+  </g>
+  <!-- 杯身：玻璃 + 奶茶 + 珍珠 -->
+  <path d="M150 186 L362 186 L338 410 Q336 432 314 432 L198 432 Q176 432 174 410 Z" fill="#fff6ee"/>
+  <g clip-path="url(#cup)">
+    <path d="M140 214 Q198 202 256 214 T372 214 L372 440 L140 440 Z" fill="url(#tea)"/>
+    <use href="#p" x="198" y="410"/><use href="#p" x="236" y="414"/><use href="#p" x="276" y="414"/><use href="#p" x="314" y="410"/>
+    <use href="#p" x="216" y="380"/><use href="#p" x="256" y="384"/><use href="#p" x="296" y="380"/>
+    <use href="#p" x="236" y="352"/><use href="#p" x="278" y="354"/>
+    <!-- 杯套 -->
+    <path d="M150 256 L362 256 L355 322 L157 322 Z" fill="#fff"/>
+    <path d="M150 263 L362 263 L356 315 L156 315 Z" fill="#ff6f91"/>
+    <!-- 玻璃高光 -->
+    <path d="M172 196 L188 404" stroke="#fff" stroke-width="11" stroke-linecap="round" opacity=".5"/>
+  </g>
+  <!-- 杯套上的笑脸 -->
+  <circle cx="228" cy="285" r="7.5" fill="#4a3048"/>
+  <circle cx="284" cy="285" r="7.5" fill="#4a3048"/>
+  <path d="M245 293 Q256 304 267 293" fill="none" stroke="#4a3048" stroke-width="5" stroke-linecap="round"/>
+  <ellipse cx="206" cy="298" rx="11" ry="6.5" fill="#ffd0dc"/>
+  <ellipse cx="306" cy="298" rx="11" ry="6.5" fill="#ffd0dc"/>
+  <!-- 杯盖 -->
+  <path d="M160 176 Q162 114 256 110 Q350 114 352 176 Z" fill="#fffaf5"/>
+  <path d="M184 150 Q200 126 236 120" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" opacity=".9"/>
+  <rect x="140" y="168" width="232" height="26" rx="13" fill="#ffffff"/>
+  <rect x="140" y="184" width="232" height="10" rx="5" fill="#f3d9e2"/>
+</svg>
