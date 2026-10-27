@@ -1,0 +1,16 @@
+{
+  "name": "波波奶茶站 · 剪影罐试玩",
+  "short_name": "波波剪影罐",
+  "description": "珍珠装在谜底形状的大罐子里，出完杯揭晓谜底，再合成新饮品和门店装饰。",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffe3cf",
+  "theme_color": "#ffe3cf",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
