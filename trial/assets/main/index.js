@@ -65667,7 +65667,6 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
       var ZOOM_OUT = 1.7; // 出完杯拉远看全貌用几秒
       var RACK_CAM = 0.9; // 谜底揭晓后，杯架落下时镜头推近的时间
       var RACK_PITCH = 28; // 近景俯角：比对局的 40° 更正，猫的脸和杯架正面都看得清
-      var RACK_CAT_SHARE = 0.27; // 脚到帽顶占整屏高度的比例。再高，旁边两列杯子就看不清颜色
       var RACK_INSETS = {
         top: 0.05,
         bottom: 0.04,
@@ -67906,32 +67905,41 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           return (this.tall ? Math.min(this.jarH, this.jarVisH) : this.jarH) * f;
         }
 
-        // 杯架近景：猫站在架子右边，镜头只框这一对，不框整面高架子，也不框罐子。
-        // 竖屏又窄又高，全收进 60 只杯子会把猫和杯子都缩成点。多出来的杯子往上排，超出这一镜的上沿。
+        // 杯架近景：整面架子和店长猫都留在画面里。列数按竖屏安全区来排，杯子尽量大，但一杯都不能排到画面外——
+        // 否则“一杯杯冒出来”就看不见了。
         ;
 
         _proto2.rackLayout = function rackLayout(n) {
           var _this$counterLeft;
           var aspect = this.camera.aspect > 0.25 ? this.camera.aspect : 0.46;
           var fracW = 1 - RACK_INSETS.side * 2;
-          var catVis = 1.72;
-          var worldW = fracW * aspect * catVis / RACK_CAT_SHARE;
+          var fracH = 1 - RACK_INSETS.top - RACK_INSETS.bottom;
+          var boxAspect = aspect * fracW / fracH;
           var catH = CHEF_TOP;
           var catX = ((_this$counterLeft = this.counterLeft) != null ? _this$counterLeft : -3.2) + CHEF_X;
           var catY = COUNTER_TOP;
           var catZ = SLOT_Z + CHEF_Z;
           var catHalf = 0.62;
-          var gapToCat = 0.1;
-          var rackBudget = Math.max(0.7, worldW - catHalf * 2 - gapToCat - 0.12);
+          var gapToCat = 0.16;
+          var catStick = catHalf * 2 + gapToCat;
           var N = Math.max(1, n);
-          // 10 杯以上固定至少两列：一列往上叠不像杯架。杯子还能看清颜色就用两列。
-          var minCols = N >= 10 ? 2 : 1;
           var best = null;
-          for (var _cols = minCols; _cols <= Math.min(3, N); _cols++) {
-            var _sc = Math.min(0.62, (rackBudget - 0.32) / (_cols * 0.96));
-            if (!(_sc > 0.28)) continue;
+          for (var _cols = 1; _cols <= Math.min(8, N); _cols++) {
             var _rows = Math.ceil(N / _cols);
-            var score = _sc + (_cols === 2 ? 0.04 : 0);
+            // (架子宽 + 猫) / 架子高 ≈ 安全区的世界宽高比，整面才填得满、又不裁杯子
+            var _A = _cols * 0.92 - boxAspect * _rows * 1.18;
+            var B = boxAspect * 0.9 - (0.48 + catStick);
+            if (Math.abs(_A) < 1e-4) continue;
+            var _sc = B / _A;
+            if (!(_sc > 0.18 && _sc < 1.05)) continue;
+            var rackH = _rows * 1.18 * _sc + 0.9;
+            var subH = Math.max(rackH, catH + 0.4);
+            var rackW = _cols * 0.92 * _sc + 0.48;
+            var subAspect = (rackW + catStick) / subH;
+            var fit = subAspect <= boxAspect ? 1 : boxAspect / subAspect;
+            var catFrac = 1.72 / subH * fit;
+            if (catFrac < 0.16) continue;
+            var score = _sc * fit + catFrac * 0.4;
             if (!best || score > best.score) best = {
               cols: _cols,
               rows: _rows,
@@ -67939,16 +67947,14 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
               score: score
             };
           }
-          var sc = best ? best.sc : 0.36;
-          var cols = best ? best.cols : 2;
-          var rows = best ? best.rows : N;
-          var gap = 0.96 * sc,
+          var sc = best ? best.sc : 0.4;
+          var cols = best ? best.cols : Math.min(4, N);
+          var rows = best ? best.rows : Math.ceil(N / cols);
+          var gap = 0.92 * sc,
             rowH = 1.18 * sc;
-          var W = cols * gap + 0.4,
-            H = rows * rowH + 0.55;
+          var W = cols * gap + 0.48,
+            H = rows * rowH + 0.9;
           var rackRight = catX - catHalf - gapToCat;
-          var boxAspect = aspect * fracW / (1 - RACK_INSETS.top - RACK_INSETS.bottom);
-          var frameH = Math.min(H + 0.2, worldW / Math.max(0.3, boxAspect) * 0.9);
           return {
             cols: cols,
             rows: rows,
@@ -67958,14 +67964,13 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             W: W,
             H: H,
             x: rackRight - W / 2,
-            y: 0.08,
+            y: 0.12,
             z: catZ,
             catX: catX,
             catY: catY,
             catZ: catZ,
             catH: catH,
-            catHalf: catHalf,
-            frameH: frameH
+            catHalf: catHalf
           };
         }
         // 空杯队、吧台上已经出完的杯子、罐子都会挡在这对近景前面或旁边，先收起来。下一关 build 会重建。
@@ -68031,10 +68036,9 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             depthTest: false
           }));
           var asp = title.material.map.userData.aspect || 4;
-          var tw = Math.min(W * 0.92, 0.38 * asp);
+          var tw = Math.min(W * 0.9, 0.46 * asp);
           title.scale.set(tw, tw / asp, 1);
-          // 标题放在这一镜的上沿，不跟整面架子的顶走（顶在画面外）
-          title.position.set(0, Math.min(H - 0.28, L.frameH - 0.2), 0.32);
+          title.position.set(0, H - 0.32, 0.32);
           title.renderOrder = 22;
           wall.add(title);
           var cups = recipes.map(function (r, i) {
@@ -68055,8 +68059,7 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           this.wall = wall;
           this.rackInfo = L;
           var zf = L.z + 0.4;
-          var visTop = L.y + L.frameH;
-          this.rackPts = [v3().set(L.x - W / 2 - 0.1, L.y - 0.06, zf), v3().set(L.catX + L.catHalf + 0.1, L.y - 0.06, zf), v3().set(L.x - W / 2 - 0.1, visTop, zf), v3().set(L.catX + L.catHalf + 0.1, visTop, zf), v3().set(L.catX, L.catY + L.catH + 0.18, L.catZ + 0.25)];
+          this.rackPts = [v3().set(L.x - W / 2 - 0.12, L.y - 0.08, zf), v3().set(L.catX + L.catHalf + 0.14, L.y - 0.08, zf), v3().set(L.x - W / 2 - 0.12, L.y + H + 0.16, zf), v3().set(L.catX + L.catHalf + 0.14, L.y + H + 0.16, zf), v3().set(L.catX, L.catY + L.catH + 0.2, L.catZ + 0.25)];
           this.rackPitch = RACK_PITCH;
           this.rackInsets = RACK_INSETS;
           this.emit('rackIn');
@@ -68079,22 +68082,23 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
               });
             }
           });
-          var gapT = n ? Math.min(0.055, 1.6 / n) : 0;
+          // 架子落稳、镜头到位之后，再一杯杯冒出来。从最上排开始，和原来的饮品墙一样。
+          var gapT = n ? Math.min(0.075, 2.2 / n) : 0;
+          var popAt = Math.max(0.72, RACK_CAM * 0.92);
           cups.forEach(function (c, i) {
-            _this24.tl.add(t0 + 0.55 + i * gapT, 0.28, function (k) {
+            _this24.tl.add(t0 + popAt + i * gapT, 0.32, function (k) {
               return c.scale.setScalar(Math.max(0.001, 0.82 * sc * ease.outBack(k)));
             }, {
               begin: function begin() {
-                return (n <= 24 || i % 3 === 0) && _this24.sfx.play('plip', {
+                return (n <= 24 || i % 2 === 0) && _this24.sfx.play('plip', {
                   k: i % 24,
                   of: 1
                 });
               }
             });
           });
-          var cupsEnd = 0.55 + n * gapT + 0.32;
-          var celebAt = Math.min(RACK_CAM * 0.85, cupsEnd);
-          this.tl.call(t0 + celebAt, function () {
+          var cupsEnd = popAt + n * gapT + 0.4;
+          this.tl.call(t0 + cupsEnd, function () {
             _this24.fx.burst(tmp.set(L.x + W * 0.1, L.y + Math.min(H * 0.55, L.catY + 1.3), L.z + 0.45), 64, 0.8);
             _this24.sfx.play('win');
             _this24.sfx.jingle('win');
@@ -68103,7 +68107,7 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
               big: false
             });
           });
-          var hold = Math.max(cupsEnd, celebAt + 2.45) + 0.35;
+          var hold = cupsEnd + 2.5;
           this.tl.call(t0 + hold, function () {
             return onDone && onDone();
           });
