@@ -6578,6 +6578,13 @@ System.register("chunks:///_virtual/game.ts", ['./rollupPluginModLoBabelHelpers.
             var text = _ref.text;
             return ui.catSay(text);
           });
+          // 杯架近景：顶栏和底部道具会挡住刚推近的猫和架子
+          this.view.on('rackIn', function () {
+            ui.hide('#hud');
+            ui.comboHide();
+            ui.bannerHide();
+            ui.tip(null);
+          });
           // 大成就：大号甜品师弹出来（设置里开了“减少动效”就不弹，只留吧台上那只的反应）
           this.view.on('catBig', function (_ref2) {
             var name = _ref2.name;
@@ -7823,7 +7830,7 @@ System.register("chunks:///_virtual/game.ts", ['./rollupPluginModLoBabelHelpers.
           this.save();
           return first;
         }
-        // 出完最后一杯：（长关卡先拉远看全貌）罐里亮出谜底，接着饮品墙，再结算
+        // 出完最后一杯：（长关卡先拉远看全貌）罐里亮出谜底，接着杯架近景，再结算
         ;
 
         _proto.win = function win() {
@@ -7838,8 +7845,8 @@ System.register("chunks:///_virtual/game.ts", ['./rollupPluginModLoBabelHelpers.
           run.shown = run.score;
           ui.score(run.score, run.lv.stars);
           ui.comboHide();
-          // 罐子里亮出像素图 → 饮品墙 → 结算卡上像素图变成插画、揭晓是什么。
-          // 长关卡先把镜头拉远：罐子的全貌（谜底的轮廓）这时才第一次露出来
+          // 罐子里亮出像素图（远景看全貌）→ 杯架落到店长猫旁边、镜头推近 → 结算卡上像素图变成插画。
+          // 长关卡先把镜头拉远：罐子的全貌（谜底的轮廓）这时才第一次露出来；杯架出来时再推近
           this.view.zoomOut(function () {
             return _this9.view.revealItem(run.item, function () {
               return _this9.view.recap(_this9.view.served.slice(), function () {
@@ -65658,6 +65665,14 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
       var TALL_MIN_VIS = 6; // 横屏、宽屏上也至少露出这么高的罐子
       var LANE_SPAN = 6.9; // 四条以上杯队：间距 = LANE_SPAN / 条数（最大 1.5）
       var ZOOM_OUT = 1.7; // 出完杯拉远看全貌用几秒
+      var RACK_CAM = 0.9; // 谜底揭晓后，杯架落下时镜头推近的时间
+      var RACK_PITCH = 28; // 近景俯角：比对局的 40° 更正，猫的脸和杯架正面都看得清
+      var RACK_CAT_SHARE = 0.27; // 脚到帽顶占整屏高度的比例。再高，旁边两列杯子就看不清颜色
+      var RACK_INSETS = {
+        top: 0.05,
+        bottom: 0.04,
+        side: 0.03
+      }; // 这一镜先收起顶栏和道具栏，边距可以收紧
       var TALL_VIS_H = 11.9; // 竖屏（390×844）开局吧台上面看得见多高的罐子（世界单位），用来估开局藏住几成
       // 店长猫·甜品师站在吧台左端的蛋糕托上：离吧台左沿多远、往前挪多少、缩放、朝杯子那边侧多少；冒话、取景用帽顶高度
       var CHEF_X = 0.74,
@@ -66080,6 +66095,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           this.cupsById = new Map();
           this.served = [];
           this.wall = null;
+          this.rackPts = null;
+          this.rackInfo = null;
           this.revealMesh = null;
           this.reveal = null;
           this.clearHint();
@@ -66188,11 +66205,12 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           };
         };
         // 甜品师的反应（chef.js 里的名字），say 是头顶冒的话
-        _proto2.catReact = function catReact(name, say) {
+        _proto2.catReact = function catReact(name, say, opts) {
           if (this.chef) this.chef.react(name);
-          if (name === 'cheer' || name === 'spin' || name === 'super') this.emit('catBig', {
+          // 杯架近景要看吧台上这只的动作，传 opts.big === false 就不弹大号叠画
+          if ((name === 'cheer' || name === 'spin' || name === 'super') && (!opts || opts.big !== false)) this.emit('catBig', {
             name: name
-          }); // 大成就：大号甜品师弹出来
+          });
           if (say) this.emit('catSay', {
             text: say
           });
@@ -67627,6 +67645,13 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           if (dur === void 0) {
             dur = 0.55;
           }
+          if (mode === 'rack' && this.rackPts) return this.fitToPoints(this.rackPts, {
+            animate: animate,
+            dur: dur,
+            insets: this.rackInsets || insets,
+            mode: 'rack',
+            pitch: this.rackPitch || RACK_PITCH
+          });
           this.insets = insets;
           this.camMode = mode;
           // 动画从镜头此刻的位置、朝向起步（下面找距离时会挪镜头）
@@ -67759,6 +67784,106 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           this.camLookFinal = target.clone();
           cam.updateMatrixWorld();
         }
+        // 把给定的世界点框进安全区。杯架近景用它：不再框整只罐子，只框杯架和店长猫。
+        ;
+
+        _proto2.fitToPoints = function fitToPoints(pts, _temp) {
+          var _ref5 = _temp === void 0 ? {} : _temp,
+            _ref5$animate = _ref5.animate,
+            animate = _ref5$animate === void 0 ? false : _ref5$animate,
+            _ref5$dur = _ref5.dur,
+            dur = _ref5$dur === void 0 ? 0.9 : _ref5$dur,
+            _ref5$insets = _ref5.insets,
+            insets = _ref5$insets === void 0 ? null : _ref5$insets,
+            _ref5$mode = _ref5.mode,
+            mode = _ref5$mode === void 0 ? 'rack' : _ref5$mode,
+            _ref5$pitch = _ref5.pitch,
+            pitch = _ref5$pitch === void 0 ? RACK_PITCH : _ref5$pitch;
+          if (insets) this.insets = insets;
+          this.camMode = mode;
+          var pos0 = this.camera.position.clone(),
+            look0 = (this.camLook || this.camLookFinal || v3()).clone();
+          var cam = this.camera;
+          var dir = v3().set(0, -Math.sin(MathUtils.degToRad(pitch)), -Math.cos(MathUtils.degToRad(pitch))).normalize();
+          var target = v3();
+          for (var _iterator18 = _createForOfIteratorHelperLoose(pts), _step18; !(_step18 = _iterator18()).done;) {
+            var p = _step18.value;
+            target.add(p);
+          }
+          target.multiplyScalar(1 / Math.max(1, pts.length));
+          var dist = 12;
+          var fit = function fit(d, tgt) {
+            cam.position.copy(tgt).addScaledVector(dir, -d);
+            cam.lookAt(tgt);
+            cam.updateMatrixWorld();
+            var minX = 1,
+              maxX = -1,
+              minY = 1,
+              maxY = -1;
+            for (var _iterator19 = _createForOfIteratorHelperLoose(pts), _step19; !(_step19 = _iterator19()).done;) {
+              var p = _step19.value;
+              tmp.copy(p).project(cam);
+              minX = Math.min(minX, tmp.x);
+              maxX = Math.max(maxX, tmp.x);
+              minY = Math.min(minY, tmp.y);
+              maxY = Math.max(maxY, tmp.y);
+            }
+            return {
+              minX: minX,
+              maxX: maxX,
+              minY: minY,
+              maxY: maxY
+            };
+          };
+          var ins = this.insets || {
+            top: 0.12,
+            bottom: 0.16,
+            side: 0.04
+          };
+          var loY = -1 + ins.bottom * 2,
+            hiY = 1 - ins.top * 2,
+            loX = -1 + ins.side * 2,
+            hiX = 1 - ins.side * 2;
+          for (var it = 0; it < 4; it++) {
+            var lo = 1.2,
+              hi = 80;
+            for (var k = 0; k < 28; k++) {
+              var mid = (lo + hi) / 2;
+              var _b2 = fit(mid, target);
+              if (_b2.minX < loX || _b2.maxX > hiX || _b2.minY < loY || _b2.maxY > hiY) lo = mid;else hi = mid;
+            }
+            dist = hi;
+            var b = fit(dist, target);
+            var tanV = Math.tan(MathUtils.degToRad(cam.fov / 2));
+            var cy = (b.minY + b.maxY) / 2,
+              want = (loY + hiY) / 2;
+            var cx = (b.minX + b.maxX) / 2,
+              wantX = (loX + hiX) / 2;
+            var up = v3().set(0, 1, 0).applyQuaternion(cam.quaternion);
+            var right = v3().set(1, 0, 0).applyQuaternion(cam.quaternion);
+            target.addScaledVector(up, (cy - want) * dist * tanV);
+            target.addScaledVector(right, (cx - wantX) * dist * tanV * cam.aspect);
+          }
+          var p1 = v3().copy(target).addScaledVector(dir, -dist);
+          if (animate && this.camLook) {
+            this.camAnim = {
+              p0: pos0,
+              p1: p1,
+              t0: look0,
+              t1: target.clone(),
+              k: 0,
+              dur: dur
+            };
+            cam.position.copy(this.camAnim.p0);
+            cam.lookAt(this.camAnim.t0);
+          } else {
+            this.camAnim = null;
+            this.camLook = target.clone();
+          }
+          this.camPos = p1.clone();
+          this.camLookFinal = target.clone();
+          cam.updateMatrixWorld();
+        }
         // 长关卡出完杯：镜头慢慢拉远，罐子全貌第一次露出来；拉完再接 cb（罐里亮出谜底像素图）
         ;
 
@@ -67781,7 +67906,87 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           return (this.tall ? Math.min(this.jarH, this.jarVisH) : this.jarH) * f;
         }
 
-        // ================================================================ 通关回顾：饮品墙
+        // 杯架近景：猫站在架子右边，镜头只框这一对，不框整面高架子，也不框罐子。
+        // 竖屏又窄又高，全收进 60 只杯子会把猫和杯子都缩成点。多出来的杯子往上排，超出这一镜的上沿。
+        ;
+
+        _proto2.rackLayout = function rackLayout(n) {
+          var _this$counterLeft;
+          var aspect = this.camera.aspect > 0.25 ? this.camera.aspect : 0.46;
+          var fracW = 1 - RACK_INSETS.side * 2;
+          var catVis = 1.72;
+          var worldW = fracW * aspect * catVis / RACK_CAT_SHARE;
+          var catH = CHEF_TOP;
+          var catX = ((_this$counterLeft = this.counterLeft) != null ? _this$counterLeft : -3.2) + CHEF_X;
+          var catY = COUNTER_TOP;
+          var catZ = SLOT_Z + CHEF_Z;
+          var catHalf = 0.62;
+          var gapToCat = 0.1;
+          var rackBudget = Math.max(0.7, worldW - catHalf * 2 - gapToCat - 0.12);
+          var N = Math.max(1, n);
+          // 10 杯以上固定至少两列：一列往上叠不像杯架。杯子还能看清颜色就用两列。
+          var minCols = N >= 10 ? 2 : 1;
+          var best = null;
+          for (var _cols = minCols; _cols <= Math.min(3, N); _cols++) {
+            var _sc = Math.min(0.62, (rackBudget - 0.32) / (_cols * 0.96));
+            if (!(_sc > 0.28)) continue;
+            var _rows = Math.ceil(N / _cols);
+            var score = _sc + (_cols === 2 ? 0.04 : 0);
+            if (!best || score > best.score) best = {
+              cols: _cols,
+              rows: _rows,
+              sc: _sc,
+              score: score
+            };
+          }
+          var sc = best ? best.sc : 0.36;
+          var cols = best ? best.cols : 2;
+          var rows = best ? best.rows : N;
+          var gap = 0.96 * sc,
+            rowH = 1.18 * sc;
+          var W = cols * gap + 0.4,
+            H = rows * rowH + 0.55;
+          var rackRight = catX - catHalf - gapToCat;
+          var boxAspect = aspect * fracW / (1 - RACK_INSETS.top - RACK_INSETS.bottom);
+          var frameH = Math.min(H + 0.2, worldW / Math.max(0.3, boxAspect) * 0.9);
+          return {
+            cols: cols,
+            rows: rows,
+            sc: sc,
+            gap: gap,
+            rowH: rowH,
+            W: W,
+            H: H,
+            x: rackRight - W / 2,
+            y: 0.08,
+            z: catZ,
+            catX: catX,
+            catY: catY,
+            catZ: catZ,
+            catH: catH,
+            catHalf: catHalf,
+            frameH: frameH
+          };
+        }
+        // 空杯队、吧台上已经出完的杯子、罐子都会挡在这对近景前面或旁边，先收起来。下一关 build 会重建。
+        ;
+
+        _proto2.tuckForRack = function tuckForRack() {
+          for (var _iterator20 = _createForOfIteratorHelperLoose(this.lanes || []), _step20; !(_step20 = _iterator20()).done;) {
+            var lane = _step20.value;
+            if (lane.g) lane.g.visible = false;
+          }
+          for (var _iterator21 = _createForOfIteratorHelperLoose(this.slots || []), _step21; !(_step21 = _iterator21()).done;) {
+            var sl = _step21.value;
+            if (sl.cup && sl.cup.g) sl.cup.g.visible = false;
+          }
+          if (this.jar) this.jar.g.visible = false;
+          if (this.machine) this.machine.visible = false;
+        }
+
+        // ================================================================ 通关回顾：杯架
+        // 谜底在远景里已经亮完。这里杯子架落到店长猫左边，镜头同时推近，让玩家看清架子和旁边这只猫的动作。
+        // 大号叠画不弹，否则会挡住刚推近的这只。庆祝动作播完才回调（结算卡）。
         ;
 
         _proto2.recap = function recap(recipes, onDone) {
@@ -67789,29 +67994,30 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           var t0 = this.now;
           var wall = new Group();
           var n = recipes.length;
-          // 长关卡一关几十杯：杯子缩小、一排摆十几只，一面墙放得下
-          var sc = n > 24 ? 0.66 : 1,
-            gap = 0.98 * sc,
-            rowH = 1.42 * sc;
-          var rows = n <= 6 ? 1 : n <= 12 ? 2 : n <= 24 ? 3 : Math.ceil(n / 13);
-          var perRow = Math.ceil(n / rows);
-          var W = Math.max(4.6, perRow * gap + 0.9),
-            H = rows * rowH + 1.25;
+          var L = this.rackLayout(n);
+          var sc = L.sc,
+            gap = L.gap,
+            rowH = L.rowH,
+            rows = L.rows,
+            cols = L.cols,
+            W = L.W,
+            H = L.H;
+          this.tuckForRack();
           var frameMat = new MeshStandardMaterial({
             color: 0xd99a62,
             roughness: 0.6
           });
-          var frame = new Mesh(new RoundedBoxGeometry(W + 0.3, H + 0.3, 0.26, 3, 0.12), frameMat);
+          var frame = new Mesh(new RoundedBoxGeometry(W + 0.28, H + 0.28, 0.26, 3, 0.12), frameMat);
           frame.position.set(0, H / 2, -0.36);
-          var panel = new Mesh(new RoundedBoxGeometry(W - 0.1, H - 0.1, 0.1, 3, 0.08), new MeshStandardMaterial({
+          var panel = new Mesh(new RoundedBoxGeometry(Math.max(0.4, W - 0.1), Math.max(0.4, H - 0.1), 0.1, 3, 0.08), new MeshStandardMaterial({
             color: 0xfff6ea,
             roughness: 0.75
           }));
           panel.position.set(0, H / 2, -0.2);
           wall.add(frame, panel);
           for (var r = 0; r < rows; r++) {
-            var sh = new Mesh(new RoundedBoxGeometry(W - 0.3, 0.1, 0.7, 2, 0.04), frameMat);
-            sh.position.set(0, 0.42 * sc + r * rowH, 0.1);
+            var sh = new Mesh(new RoundedBoxGeometry(Math.max(0.3, W - 0.28), 0.08, 0.55, 2, 0.03), frameMat);
+            sh.position.set(0, 0.38 * sc + r * rowH, 0.08);
             wall.add(sh);
           }
           var title = new Sprite(new SpriteMaterial({
@@ -67825,8 +68031,10 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             depthTest: false
           }));
           var asp = title.material.map.userData.aspect || 4;
-          title.scale.set(0.7 * asp, 0.7, 1);
-          title.position.set(0, H - 0.35, 0.3);
+          var tw = Math.min(W * 0.92, 0.38 * asp);
+          title.scale.set(tw, tw / asp, 1);
+          // 标题放在这一镜的上沿，不跟整面架子的顶走（顶在画面外）
+          title.position.set(0, Math.min(H - 0.28, L.frameH - 0.2), 0.32);
           title.renderOrder = 22;
           wall.add(title);
           var cups = recipes.map(function (r, i) {
@@ -67834,20 +68042,34 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             c.userData.badge.visible = false;
             c.userData.lid.visible = true;
             setLiquid(c, r.length, true);
-            var row = Math.floor(i / perRow),
-              col = i % perRow,
-              inRow = Math.min(perRow, n - row * perRow);
-            c.position.set((col - (inRow - 1) / 2) * gap, 0.47 * sc + (rows - 1 - row) * rowH, 0.15);
+            var row = Math.floor(i / cols),
+              col = i % cols,
+              inRow = Math.min(cols, n - row * cols);
+            c.position.set((col - (inRow - 1) / 2) * gap, 0.44 * sc + (rows - 1 - row) * rowH, 0.16);
             c.scale.setScalar(0.001);
             wall.add(c);
             return c;
           });
-          var y1 = COUNTER_TOP + (rows === 1 ? 1.1 : rows === 2 ? 0.55 : 0.15);
-          wall.position.set(0, y1 + 9, TUBE_Z + 0.5);
+          wall.position.set(L.x, L.y + 8, L.z);
           this.root.add(wall);
           this.wall = wall;
-          this.tl.add(t0, 0.55, function (k) {
-            return wall.position.y = y1 + 9 * (1 - k);
+          this.rackInfo = L;
+          var zf = L.z + 0.4;
+          var visTop = L.y + L.frameH;
+          this.rackPts = [v3().set(L.x - W / 2 - 0.1, L.y - 0.06, zf), v3().set(L.catX + L.catHalf + 0.1, L.y - 0.06, zf), v3().set(L.x - W / 2 - 0.1, visTop, zf), v3().set(L.catX + L.catHalf + 0.1, visTop, zf), v3().set(L.catX, L.catY + L.catH + 0.18, L.catZ + 0.25)];
+          this.rackPitch = RACK_PITCH;
+          this.rackInsets = RACK_INSETS;
+          this.emit('rackIn');
+          this.fitToPoints(this.rackPts, {
+            animate: true,
+            dur: RACK_CAM,
+            insets: RACK_INSETS,
+            mode: 'rack',
+            pitch: RACK_PITCH
+          });
+          if (this.chef) this.chef.lookAt(v3().set(L.x, L.y + H * 0.42, L.z), 4);
+          this.tl.add(t0, 0.7, function (k) {
+            return wall.position.y = L.y + 8 * (1 - k);
           }, {
             ease: ease.outBack,
             begin: function begin() {
@@ -67857,28 +68079,32 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
               });
             }
           });
-          var gapT = Math.min(0.075, 2.2 / n);
+          var gapT = n ? Math.min(0.055, 1.6 / n) : 0;
           cups.forEach(function (c, i) {
             _this24.tl.add(t0 + 0.55 + i * gapT, 0.28, function (k) {
               return c.scale.setScalar(Math.max(0.001, 0.82 * sc * ease.outBack(k)));
             }, {
               begin: function begin() {
-                return (n <= 24 || i % 2 === 0) && _this24.sfx.play('plip', {
+                return (n <= 24 || i % 3 === 0) && _this24.sfx.play('plip', {
                   k: i % 24,
                   of: 1
                 });
               }
             });
           });
-          var end = t0 + 0.55 + n * gapT + 0.4;
-          this.tl.call(end, function () {
-            _this24.fx.burst(tmp.set(0, TUBE_BASE + 3, 0), 90, 1.1);
+          var cupsEnd = 0.55 + n * gapT + 0.32;
+          var celebAt = Math.min(RACK_CAM * 0.85, cupsEnd);
+          this.tl.call(t0 + celebAt, function () {
+            _this24.fx.burst(tmp.set(L.x + W * 0.1, L.y + Math.min(H * 0.55, L.catY + 1.3), L.z + 0.45), 64, 0.8);
             _this24.sfx.play('win');
-            _this24.sfx.jingle('win'); // 配乐：停对局曲，放一次胜利短曲
+            _this24.sfx.jingle('win');
             _this24.hap('win');
-            _this24.catReact('super', '全部出完啦！');
+            _this24.catReact('super', '全部出完啦！', {
+              big: false
+            });
           });
-          this.tl.call(end + 0.7, function () {
+          var hold = Math.max(cupsEnd, celebAt + 2.45) + 0.35;
+          this.tl.call(t0 + hold, function () {
             return onDone && onDone();
           });
         };
