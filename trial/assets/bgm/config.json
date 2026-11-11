@@ -1,0 +1,45 @@
+{
+    "importBase": "import",
+    "nativeBase": "native",
+    "name": "bgm",
+    "deps": [],
+    "uuids": [
+        "1d61c4f4-1362-4243-9023-ad9ac59423c1",
+        "4ecad9ac-5353-4db8-8ac1-4e03596e7ad1",
+        "b42859d4-d2d8-4a73-8cc7-2044752eccf8",
+        "dcda56a3-0964-4e3b-8216-7ae47d4f8238"
+    ],
+    "paths": {
+        "dcda56a3-0964-4e3b-8216-7ae47d4f8238": [
+            "bgm_home",
+            "cc.BufferAsset",
+            1
+        ],
+        "1d61c4f4-1362-4243-9023-ad9ac59423c1": [
+            "bgm_play",
+            "cc.BufferAsset",
+            1
+        ],
+        "b42859d4-d2d8-4a73-8cc7-2044752eccf8": [
+            "jingle_lose",
+            "cc.BufferAsset",
+            1
+        ],
+        "4ecad9ac-5353-4db8-8ac1-4e03596e7ad1": [
+            "jingle_win",
+            "cc.BufferAsset",
+            1
+        ]
+    },
+    "scenes": {},
+    "packs": {},
+    "versions": {
+        "import": [],
+        "native": []
+    },
+    "redirect": [],
+    "debug": true,
+    "extensionMap": {},
+    "hasPreloadScript": true,
+    "dependencyRelationships": {}
+}

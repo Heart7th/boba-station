@@ -1,0 +1,63 @@
+{
+    "importBase": "import",
+    "nativeBase": "native",
+    "name": "resources",
+    "deps": [
+        "internal"
+    ],
+    "uuids": [
+        "5d0c7b36-8e1a-4f52-9a43-0c6f2b7e9a11",
+        "6b0f2a6e-1c1e-4c0a-9d0e-2f6a1b9c3d02",
+        "6b0f2a6e-1c1e-4c0a-9d0e-2f6a1b9c3d10",
+        "9337dedd-649b-4b3c-83f0-c097790b85e9",
+        "9e4a1c58-2b7d-4e36-8f15-6a3d9c0b7e22",
+        "a3cd009f-0ab0-420d-9278-b9fdab939bbc",
+        "b3a7e1c4-6d2f-4a8b-9c51-2e7f0d4a6b33"
+    ],
+    "paths": {
+        "b3a7e1c4-6d2f-4a8b-9c51-2e7f0d4a6b33": [
+            "effects/boba-pearl",
+            "cc.EffectAsset",
+            1
+        ],
+        "5d0c7b36-8e1a-4f52-9a43-0c6f2b7e9a11": [
+            "effects/boba-standard",
+            "cc.EffectAsset",
+            1
+        ],
+        "9e4a1c58-2b7d-4e36-8f15-6a3d9c0b7e22": [
+            "effects/boba-unlit",
+            "cc.EffectAsset",
+            1
+        ],
+        "6b0f2a6e-1c1e-4c0a-9d0e-2f6a1b9c3d10": [
+            "effects/glass",
+            "cc.EffectAsset",
+            1
+        ],
+        "9337dedd-649b-4b3c-83f0-c097790b85e9": [
+            "env/room",
+            "cc.JsonAsset",
+            1
+        ],
+        "6b0f2a6e-1c1e-4c0a-9d0e-2f6a1b9c3d02": [
+            "materials/unlit",
+            "cc.Material",
+            1
+        ]
+    },
+    "scenes": {},
+    "packs": {},
+    "versions": {
+        "import": [],
+        "native": []
+    },
+    "redirect": [
+        "a3cd009f-0ab0-420d-9278-b9fdab939bbc",
+        "0"
+    ],
+    "debug": true,
+    "extensionMap": {},
+    "hasPreloadScript": true,
+    "dependencyRelationships": {}
+}

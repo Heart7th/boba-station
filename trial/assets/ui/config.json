@@ -1,0 +1,33 @@
+{
+    "importBase": "import",
+    "nativeBase": "native",
+    "name": "ui",
+    "deps": [],
+    "uuids": [
+        "e0e4d7c3-2397-4553-bfd8-06a865c7ade6",
+        "e0e4d7c3-2397-4553-bfd8-06a865c7ade6@6c48a"
+    ],
+    "paths": {
+        "e0e4d7c3-2397-4553-bfd8-06a865c7ade6": [
+            "title_logo",
+            "cc.ImageAsset",
+            1
+        ],
+        "e0e4d7c3-2397-4553-bfd8-06a865c7ade6@6c48a": [
+            "title_logo/texture",
+            "cc.Texture2D",
+            1
+        ]
+    },
+    "scenes": {},
+    "packs": {},
+    "versions": {
+        "import": [],
+        "native": []
+    },
+    "redirect": [],
+    "debug": true,
+    "extensionMap": {},
+    "hasPreloadScript": true,
+    "dependencyRelationships": {}
+}
