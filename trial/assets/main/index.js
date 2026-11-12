@@ -65713,6 +65713,22 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
         beadTex.colorSpace = SRGBColorSpace;
         return beadTex;
       }
+
+      // 出口色点：白圆，颜色乘在精灵上。挂在嘴前面、正对镜头，不藏在奶油嘴里
+      var chipTex = null;
+      function outletChipTexture() {
+        if (chipTex) return chipTex;
+        var c = document.createElement('canvas');
+        c.width = c.height = 64;
+        var g = c.getContext('2d');
+        g.fillStyle = '#ffffff';
+        g.beginPath();
+        g.arc(32, 32, 28, 0, Math.PI * 2);
+        g.fill();
+        chipTex = new CanvasTexture(c);
+        chipTex.colorSpace = SRGBColorSpace;
+        return chipTex;
+      }
       function bez(a, b, c, t, out) {
         var u = 1 - t;
         return out.set(u * u * a.x + 2 * u * t * b.x + t * t * c.x, u * u * a.y + 2 * u * t * b.y + t * t * c.y, u * u * a.z + 2 * u * t * b.z + t * t * c.z);
@@ -66364,6 +66380,20 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           sign.renderOrder = 9;
           nz.add(sign);
           ud.sign = sign;
+          // 正对镜头的色点，大约一颗珠那么大，放在嘴口前面。色片藏在嘴里时正面看不见
+          var chip = new Sprite(new SpriteMaterial({
+            map: outletChipTexture(),
+            color: 0x34262e,
+            transparent: true,
+            depthTest: false
+          }));
+          chip.material.userData.own = true;
+          chip.position.set(0, ud.exitY - 0.04, (ud.exitZ || 0) + 0.36);
+          chip.scale.set(0.78, 0.78, 1);
+          chip.renderOrder = 20;
+          chip.visible = false;
+          nz.add(chip);
+          ud.chip = chip;
           var out = {
             i: i,
             x: o.x,
@@ -67502,10 +67532,12 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
               if (c) {
                 ud.sign.material.map = signTexture(c);
                 ud.sign.material.needsUpdate = true;
-                // 色片用珠子本身的颜色，不受光，和罐子里那颗对得上
-                ud.fill.material.color.setHex(FLAVORS[c].pearl);
+                // 色片和正对镜头的色点都用珠子本身的颜色
+                if (ud.fill) ud.fill.material.color.setHex(FLAVORS[c].pearl);
+                if (ud.chip) ud.chip.material.color.setHex(FLAVORS[c].pearl);
               } else {
-                ud.fill.material.color.copy(ud.fillColor);
+                if (ud.fill) ud.fill.material.color.copy(ud.fillColor);
+                if (ud.chip) ud.chip.material.color.setHex(0x34262e);
               }
             }
             // 小牌正下方的吧台位上有杯子时收起来：杯顶的数字牌在画面上正好压着小牌，两样叠在一起都看不清。
@@ -67522,6 +67554,7 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             ud.sign.visible = out.signK > 0.02;
             ud.sign.material.opacity = out.signK;
             ud.sign.scale.setScalar(Math.max(0.001, out.signK * (0.5 + 0.04 * Math.sin(now * 5 + out.i))));
+            if (ud.chip) ud.chip.visible = !!c;
           };
           for (var _iterator15 = _createForOfIteratorHelperLoose(this.outlets), _step15; !(_step15 = _iterator15()).done;) {
             _loop6();
