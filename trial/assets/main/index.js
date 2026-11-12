@@ -7141,7 +7141,10 @@ System.register("chunks:///_virtual/game.ts", ['./rollupPluginModLoBabelHelpers.
         _proto.cutInBand = function cutInBand() {
           var rect = this.app.rect();
           var top = ui.tipCS.node.active ? ui.tipBottom() : ui.progressBottom();
-          this.app.stage.setBand(top + 6 - rect.top, this.view.outletTop(rect) - 42 - rect.top);
+          // 下沿：出口嘴口挂着的大珍珠（outletTop 是珠心）往上 30 像素，正好不挡出口嘴和挂着的珍珠。
+          // 原来是出口嘴尖往上 42；11-12 出口换成“短嘴挂大珍珠”、罐子抬高以后，珠心比原来的嘴尖高 12 像素左右，这里跟着收，
+          // 大号甜品师能占的范围相对罐子不变（390×844 带教学提示时还够 140 像素，照样弹得出来）
+          this.app.stage.setBand(top + 6 - rect.top, this.view.outletTop(rect) - 30 - rect.top);
         };
         _proto.addShown = function addShown(n) {
           var run = this.run;
@@ -59450,58 +59453,78 @@ System.register("chunks:///_virtual/models.ts", ['./rollupPluginModLoBabelHelper
         PEARL_BAND.h = H * c;
         return g;
       }
-      // 罐底出口：贴在罐框上的小卡箍 + 短一截奶油嘴。等口味时，嘴口探出一颗和珠子同色的小珠。
-      // 厚唇环像嘴，贴在前面的平面色点像贴纸。小珠嵌在口里，颜色就是正要掉下来的那颗。
-      var NOZZLE_TILT = 46 * Math.PI / 180;
-      var NOZZLE_BOOST = 1.12;
-      function buildNozzle(M, s) {
+      // 罐底出口：罐框上伸出来一截奶油短嘴，嘴口挂着一颗和罐里一模一样的大珍珠——就是这个出口下一颗要掉的那颗，像水龙头口上那一滴。
+      // 珍珠不在这里建：view 从珍珠池里拿一颗摆在 userData.pearl 的位置（同一种材质，见 view.updateOutletPearls）。
+      // 以前的做法都试过：细环、嘴里的色片在手机上看不见；整列珍珠发亮把旁边冲淡；贴在嘴前的平面色点像贴纸；嵌在小嘴里的小珠只有
+      // 三分之一颗大，还被罐框挡住；一圈奶油环套着珍珠（尤其黑糖）像一对眼睛。所以：珠子本身够大、挂在嘴口下面、背后是浅色的墙。
+      // 嘴往镜头这边斜 tilt 度：镜头俯角 40°，斜 40° 时嘴身正好横在视线上，画面里就是“上面一截嘴、下面一颗珠”。
+      var NOZZLE = exports('NOZZLE', {
+        y: 0.3,
+        // 嘴根比出口那一格的下沿高多少（一格高 0.5）。嘴根在罐框正面、比珍珠靠前，镜头俯着看会往下偏：抬这么多，画面里嘴正好接在这一列最下面那颗珠的下沿
+        z: 0.05,
+        // 嘴根在罐框正面之前多少
+        tilt: 40,
+        // 嘴往镜头这边斜多少度
+        len: 0.1,
+        // 嘴根到嘴口多长
+        back: 0.0,
+        // 嘴根往罐子里再埋多长
+        r0: 0.19,
+        // 嘴根半径
+        r1: 0.165,
+        // 嘴口半径：比珍珠窄一圈，珍珠是从嘴里鼓出来的；和珍珠一样宽的话像个带盖的小罐子
+        lip: 0.04,
+        // 嘴口卷边多粗
+        lipR: 0.012,
+        // 卷边比嘴口往外鼓多少
+        ink: 0.016,
+        // 可可描边露出来多宽
+        drop: 0.21,
+        // 珍珠中心在嘴口下面多远：卷边上半圈露在珍珠外面
+        boost: 1.2,
+        // 嘴口的珍珠比罐里的大多少
+        body: 'cream',
+        // 嘴身、卷边用哪种材质（makeMaterials 里的名字）：奶油嘴 + 黄铜卷边，和罐框上的黄铜螺钉是一套
+        rim: 'brass'
+      });
+      function buildNozzle(M, s, P) {
         if (s === void 0) {
           s = 1;
         }
+        if (P === void 0) {
+          P = NOZZLE;
+        }
         var g = new Group();
-        var cuff = new Mesh(new CylinderGeometry(0.2, 0.2, 0.1, 28), M.cream);
-        cuff.position.y = -0.02;
-        var band = new Mesh(new TorusGeometry(0.2, 0.02, 8, 28), M.mint);
-        band.rotation.x = Math.PI / 2;
-        band.position.y = -0.02;
-        var cuffInk = new Mesh(new CylinderGeometry(0.222, 0.222, 0.12, 28), M.ink);
-        cuffInk.position.y = -0.02;
-        var pivotY = -0.07,
-          len = 0.2;
+        var t = P.tilt * Math.PI / 180;
+        // 嘴自己的坐标：-y 是出珠的方向
         var spout = new Group();
-        spout.position.y = pivotY;
-        spout.rotation.x = -NOZZLE_TILT;
-        var funnel = new Mesh(new CylinderGeometry(0.15, 0.1, 0.12, 24), M.cream);
-        funnel.position.y = -0.06;
-        var collar = new Mesh(new CylinderGeometry(0.1, 0.1, 0.05, 20), M.cream);
-        collar.position.y = -0.14;
-        var funnelInk = new Mesh(new CylinderGeometry(0.17, 0.13, 0.13, 24), M.ink);
-        funnelInk.position.y = -0.06;
-        var lipInk = new Mesh(new TorusGeometry(0.118, 0.014, 6, 24), M.ink);
+        spout.position.set(0, P.y, P.z);
+        spout.rotation.x = -t;
+        var h = P.len + P.back,
+          mid = (P.back - P.len) / 2;
+        var tube = new Mesh(new CylinderGeometry(P.r0, P.r1, h, 28), M[P.body]);
+        tube.position.y = mid;
+        tube.castShadow = true;
+        var lip = new Mesh(new TorusGeometry(P.r1 + P.lipR, P.lip, 10, 28), M[P.rim]);
+        lip.rotation.x = Math.PI / 2;
+        lip.position.y = -P.len;
+        var tubeInk = new Mesh(new CylinderGeometry(P.r0 + P.ink, P.r1 + P.ink, h, 28), M.ink);
+        tubeInk.position.y = mid;
+        var lipInk = new Mesh(new TorusGeometry(P.r1 + P.lipR, P.lip + P.ink, 8, 28), M.ink);
         lipInk.rotation.x = Math.PI / 2;
-        lipInk.position.y = -0.168;
-        // 嵌在口里的小珠，比口沿略探出来，正面看得到颜色
-        var bead = new Mesh(new SphereGeometry(0.105, 18, 14), new MeshStandardMaterial({
-          color: 0x34262e,
-          emissive: 0x000000,
-          emissiveIntensity: 0.45,
-          roughness: 0.28
-        }));
-        bead.position.y = -0.2;
-        bead.visible = false;
-        spout.add(merged([funnel, collar], M.cream), merged([funnelInk, lipInk], M.ink), bead);
-        g.add(cuff, band, cuffInk, spout);
-        // 整体再放大一圈（绮光的建议 C）：原来嘴只有一颗珍珠宽，手机上容易被满罐的彩色珍珠盖过去
-        g.scale.setScalar(s * NOZZLE_BOOST);
-        g.traverse(function (o) {
-          return o.isMesh && o.material !== M.ink && o.material !== M.hole && (o.castShadow = true);
-        });
-        // 嘴口中心（珍珠从这里出来）：绕 x 轴往镜头一侧转了 NOZZLE_TILT
-        g.userData.exitY = pivotY - len * Math.cos(NOZZLE_TILT);
-        g.userData.exitZ = len * Math.sin(NOZZLE_TILT);
-        g.userData.cuff = cuff;
-        g.userData.band = band;
-        g.userData.bead = bead;
+        lipInk.position.y = -P.len;
+        var hole = new Mesh(new CircleGeometry(P.r1 - 0.01, 24), M.hole);
+        hole.rotation.x = Math.PI / 2;
+        hole.position.y = -P.len - P.lip * 0.4;
+        spout.add(tube, lip, merged([tubeInk, lipInk], M.ink), hole);
+        g.add(spout);
+        g.scale.setScalar(s);
+        // 嘴口那颗珍珠的位置（真珍珠也从这里飞出去），换算到出口组自己的坐标
+        var d = P.len + P.drop;
+        g.userData.pearl = new Vector3(0, P.y - d * Math.cos(t), P.z + d * Math.sin(t));
+        g.userData.exitY = g.userData.pearl.y;
+        g.userData.exitZ = g.userData.pearl.z;
+        g.userData.boost = P.boost;
         return g;
       }
 
@@ -65563,7 +65586,7 @@ System.register("chunks:///_virtual/ui.ts", ['./rollupPluginModLoBabelHelpers.js
 });
 
 System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.js', 'cc', './index.ts', './tween.ts', './models.ts', './art2d.ts', './palette.ts', './rules.ts', './items.ts', './pictures.ts', './math.ts', './object.ts', './geometry.ts', './material.ts'], function (exports) {
-  var _createForOfIteratorHelperLoose, _createClass, cclegacy, ease, Timeline, damp, buildMachine, COUNTER_TOP, buildJar, buildLane, buildCoaster, buildCounter, LANE_TOP, buildCup, buildNozzle, cupPearlLocal, setLiquid, CUP_H, cupPearlScale, PEARL_R, textTexture, badgeTexture, iconTexture, signTexture, FLAVORS, MYSTERY, isOpen, itemCells, loadArt, Color, Vector3, MathUtils, Vector2, Quaternion, Matrix4, Mesh, Sprite, Group, InstancedMesh, Raycaster, BoxGeometry, CylinderGeometry, RoundedBoxGeometry, CircleGeometry, TorusGeometry, SphereGeometry, MeshBasicMaterial, disposeVariants, SpriteMaterial, MeshStandardMaterial, CanvasTexture, SRGBColorSpace, DynamicDrawUsage;
+  var _createForOfIteratorHelperLoose, _createClass, cclegacy, ease, Timeline, buildMachine, COUNTER_TOP, buildJar, buildLane, buildCoaster, buildCounter, LANE_TOP, buildCup, buildNozzle, cupPearlLocal, setLiquid, CUP_H, PEARL_R, NOZZLE, cupPearlScale, textTexture, badgeTexture, iconTexture, FLAVORS, MYSTERY, isOpen, itemCells, loadArt, Color, Vector3, MathUtils, Vector2, Quaternion, Matrix4, Mesh, Sprite, Group, InstancedMesh, Raycaster, BoxGeometry, CylinderGeometry, RoundedBoxGeometry, CircleGeometry, TorusGeometry, SphereGeometry, MeshBasicMaterial, disposeVariants, SpriteMaterial, MeshStandardMaterial, CanvasTexture, SRGBColorSpace, DynamicDrawUsage;
   return {
     setters: [function (module) {
       _createForOfIteratorHelperLoose = module.createForOfIteratorHelperLoose;
@@ -65573,7 +65596,6 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
     }, null, function (module) {
       ease = module.ease;
       Timeline = module.Timeline;
-      damp = module.damp;
     }, function (module) {
       buildMachine = module.buildMachine;
       COUNTER_TOP = module.COUNTER_TOP;
@@ -65587,13 +65609,13 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
       cupPearlLocal = module.cupPearlLocal;
       setLiquid = module.setLiquid;
       CUP_H = module.CUP_H;
-      cupPearlScale = module.cupPearlScale;
       PEARL_R = module.PEARL_R;
+      NOZZLE = module.NOZZLE;
+      cupPearlScale = module.cupPearlScale;
     }, function (module) {
       textTexture = module.textTexture;
       badgeTexture = module.badgeTexture;
       iconTexture = module.iconTexture;
-      signTexture = module.signTexture;
     }, function (module) {
       FLAVORS = module.FLAVORS;
       MYSTERY = module.MYSTERY;
@@ -65640,7 +65662,7 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
       var LANE_CUP_S = 1.08; // 杯队里的杯子放大一点，几乎占满托盘宽，颜色一眼看清（原 0.92；上吧台时缩回吧台位的大小）
       var LANE_Z0 = 1.3;
       var TUBE_Z = -1.42;
-      var TUBE_BASE = 2.58; // 罐底的世界高度；出口嘴下沿约在 2.1，略高于杯口
+      var TUBE_BASE = 2.85; // 罐底的世界高度（原 2.58）。抬高是给出口嘴口挂着的大珍珠腾地方：最低那排出口正下方摆了杯时，珍珠下沿要在杯顶数字牌之上
       var SLOT_Z = -0.42;
       var v3 = function v3() {
         return new Vector3();
@@ -65688,6 +65710,11 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
       var JELLY_FALL = [0, 0.12, 0.17, 0.21]; // 罐里沉降落了 1、2、3 格以上
       var JELLY_CUP = 0.24; // 落进杯里
       var POUR_STRETCH = 0.14; // 开局下落时越落越快、越拉越长，落地前长 14%（接着压下去，不跳）
+      // 出口嘴口挂着的大珍珠：堵在出口的那颗真珠落稳这么久才亮出来。比最慢的一拍（0.17 秒）长，连着落的出口每拍换一颗，不会一闪一闪
+      var OUT_HOLD = 0.3;
+      var OUT_IN = 0.24,
+        OUT_OUT = 0.1; // 亮出来（带一点回弹）、收回去各用多久
+      var OUT_DRIP = 0.035; // 挂在嘴口时上下拉长、缩回的幅度
 
       // 揭晓画面的豆子贴图（乘实例颜色）：边缘略暗、中间小孔、左上高光
       var beadTex = null;
@@ -65722,12 +65749,15 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
 
       // ------------------------------------------------------------------ 珍珠实例池
       var Pearls = /*#__PURE__*/function () {
-        function Pearls(scene, M, max) {
+        function Pearls(scene, M, max, seg) {
           if (max === void 0) {
             max = 1400;
           }
-          var geo = new SphereGeometry(PEARL_R, 20, 14);
-          this.detail = '20x14';
+          if (seg === void 0) {
+            seg = [20, 14];
+          }
+          var geo = new SphereGeometry(PEARL_R, seg[0], seg[1]);
+          this.detail = seg.join('x');
           this.mesh = new InstancedMesh(geo, M.pearl, max);
           this.mesh.instanceMatrix.setUsage(DynamicDrawUsage);
           this.mesh.castShadow = true;
@@ -65842,8 +65872,11 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             this.mesh.setColorAt(p.i, tmpC);
             if (p.mark) {
               p.mark.position.copy(w);
-              p.mark.position.z += PEARL_R * 1.05;
-              p.mark.position.y += 0.01;
+              // markAt：问号相对珠心的位置（出口嘴口那颗大珍珠用，朝镜头那一面的正中）；罐里的珍珠照旧贴在正前方
+              if (p.markAt) p.mark.position.add(p.markAt);else {
+                p.mark.position.z += PEARL_R * 1.05;
+                p.mark.position.y += 0.01;
+              }
             }
           }
           this.mesh.instanceMatrix.needsUpdate = true;
@@ -65879,6 +65912,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           this.quality = quality;
           this.tl = new Timeline();
           this.pearls = new Pearls(scene, M);
+          // 出口嘴口挂着的大珍珠：同一种材质，单独一小池、球面分得细（罐里的长关卡只有 12×9 段，放大 1.2 倍能看出棱角）
+          this.tapPearls = new Pearls(scene, M, 24, [28, 20]);
           this.root = new Group();
           scene.add(this.root);
           this.markTex = iconTexture('mystery');
@@ -65996,6 +66031,7 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           this.outlets = state.outlets.map(function (o, i) {
             return _this.addNozzle(o, i, state);
           });
+          this.fitOutlets();
           // 吧台位
           this.slots = state.slots.map(function (x) {
             return {
@@ -66062,6 +66098,7 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
         _proto2.dispose = function dispose() {
           this.tl.clear();
           this.pearls.clear();
+          this.tapPearls.clear();
           if (this.revealMesh) disposeVariants(this.revealMesh.material);
           for (var _i2 = 0, _arr2 = [].concat(this.root.children); _i2 < _arr2.length; _i2++) {
             var o = _arr2[_i2];
@@ -66340,45 +66377,49 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
         };
         _proto2.addNozzle = function addNozzle(o, i, state) {
           var c = this.jar.c;
-          var nz = buildNozzle(this.M, Math.min(1.25, Math.max(0.72, c / 0.5)));
+          // 出口嘴和珍珠一个比例（格子小的关卡跟着缩）；原点在出口那一格的下沿、罐框正面
+          var nz = buildNozzle(this.M, Math.min(1.3, c / 0.5));
           this.cellLocal(o.x, o.y, nz.position);
           nz.position.y -= c * 0.5;
-          // 往前挪：卡箍压在罐框正面，一眼看得见出口在哪
-          nz.position.z = this.jar.depth / 2 - 0.08;
+          nz.position.z = this.jar.depth / 2 + 0.1;
           this.jar.g.add(nz);
-          // 卡箍、色圈各用自己的材质：出口在等哪种口味，就染成那个颜色，前面挂一块口味小牌
-          var ud = nz.userData;
-          for (var _i3 = 0, _arr3 = ['cuff', 'band', 'bead']; _i3 < _arr3.length; _i3++) {
-            var k = _arr3[_i3];
-            ud[k].material = ud[k].material.clone();
-            ud[k].material.userData.own = true;
-            ud[k + 'Color'] = ud[k].material.color.clone();
-          }
-          var sign = new Sprite(new SpriteMaterial({
-            transparent: true,
-            depthTest: false,
-            opacity: 0
-          }));
-          sign.material.userData.own = true;
-          // 小牌挂在嘴口下面一点。嘴缩短以后别再垂太低，否则和杯顶的数字牌叠在一起
-          sign.position.set(0, ud.exitY - 0.2, ud.exitZ + 0.08);
-          sign.scale.setScalar(0.001);
-          sign.renderOrder = 9;
-          nz.add(sign);
-          ud.sign = sign;
+          // pv：嘴口挂着的那颗大珍珠（tapPearls 池里的一颗）；pvFor：它替的是罐里哪颗真珠；sign：亮的是哪种口味（'?' 是神秘珍珠，给测试看）
+          // pid / since：规则里堵在这个出口的是哪颗、从什么时候起；k：亮出来的进度 0→1
           var out = {
             i: i,
             x: o.x,
             y: o.y,
             g: nz,
             ice: null,
+            pv: null,
+            pvFor: null,
             sign: null,
-            signK: 0
+            pid: -2,
+            since: 0,
+            k: 0,
+            s0: nz.scale.x,
+            tight: false
           };
           if (o.ice > state.sealed) this.addOutletIce(out, o.ice - state.sealed);
           return out;
         }
-        // 出口嘴下沿的世界坐标：珍珠从这里飞向杯子
+        // 两个出口挨着（相邻两列）时出口嘴和大珍珠都收小一号，不互相压着。开局、加出口以后各算一次
+        ;
+
+        _proto2.fitOutlets = function fitOutlets() {
+          var os = this.outlets || [];
+          var _loop = function _loop() {
+            var a = _step6.value;
+            a.tight = os.some(function (b) {
+              return b !== a && Math.abs(b.x - a.x) === 1 && Math.abs(b.y - a.y) <= 1;
+            });
+            a.g.scale.setScalar(a.s0 * (a.tight ? 0.8 : 1));
+          };
+          for (var _iterator6 = _createForOfIteratorHelperLoose(os), _step6; !(_step6 = _iterator6()).done;) {
+            _loop();
+          }
+        }
+        // 出口嘴口那颗大珍珠的位置（世界坐标）：珍珠从这里飞向杯子
         ;
 
         _proto2.outletExit = function outletExit(i, out) {
@@ -66393,6 +66434,7 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           var box = new Mesh(new RoundedBoxGeometry(c * 1.7, c * 1.7, this.jar.depth + 0.25, 3, 0.12), this.M.ice);
           box.position.copy(o.g.position);
           box.position.y += c * 0.55;
+          box.position.z = this.jar.depth / 2 - 0.08; // 冰块前后的位置和以前一样（出口组现在贴在罐框正面，靠前了）
           box.renderOrder = 6;
           this.jar.g.add(box);
           var t = textTexture('❄ ' + need, {
@@ -66461,8 +66503,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           });
           var H = this.jar.H;
           var stretch = this.pearls.jelly ? POUR_STRETCH : 0;
-          var _loop = function _loop() {
-            var vp = _step6.value;
+          var _loop2 = function _loop2() {
+            var vp = _step7.value;
             if (!vp) return 1; // continue
             var y1 = vp.local.y,
               d = 0.3 + (H - 1 - vp.cell[1]) * 0.035 + Math.random() * 0.06;
@@ -66480,8 +66522,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
               }
             });
           };
-          for (var _iterator6 = _createForOfIteratorHelperLoose(this.jp), _step6; !(_step6 = _iterator6()).done;) {
-            if (_loop()) continue;
+          for (var _iterator7 = _createForOfIteratorHelperLoose(this.jp), _step7; !(_step7 = _iterator7()).done;) {
+            if (_loop2()) continue;
           }
           this.tl.call(t0 + 0.4, function () {
             return _this5.sfx.play('rattle');
@@ -66510,8 +66552,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           var _this6 = this;
           this.state = state;
           var flowAt = this.now;
-          var _loop2 = function _loop2() {
-            var e = _step7.value;
+          var _loop3 = function _loop3() {
+            var e = _step8.value;
             if (e.t === 'dock') _this6.animDock(e);else if (e.t === 'outlet') flowAt = _this6.animOutlet(e, state);else if (e.t === 'move') flowAt = Math.max(flowAt, _this6.animMoves(e.moves, flowAt, STEP));else if (e.t === 'reveal') {
               var vp = _this6.jp[e.id];
               if (vp) _this6.tl.call(flowAt, function () {
@@ -66519,8 +66561,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
               });
             } else if (e.t === 'revive') _this6.animRevive(e, state);else if (e.t === 'unlock') _this6.animUnlock(e);
           };
-          for (var _iterator7 = _createForOfIteratorHelperLoose(events), _step7; !(_step7 = _iterator7()).done;) {
-            _loop2();
+          for (var _iterator8 = _createForOfIteratorHelperLoose(events), _step8; !(_step8 = _iterator8()).done;) {
+            _loop3();
           }
           return flowAt;
         }
@@ -66692,8 +66734,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           }
           var moveDone = this.moveDone;
           var done = at;
-          var _loop3 = function _loop3() {
-            var m = _step8.value;
+          var _loop4 = function _loop4() {
+            var m = _step9.value;
             var vp = _this9.jp[m.id];
             if (!vp) return 1; // continue
             var cells = [vp.cell].concat(m.path);
@@ -66722,8 +66764,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
               }
             });
           };
-          for (var _iterator8 = _createForOfIteratorHelperLoose(moves), _step8; !(_step8 = _iterator8()).done;) {
-            if (_loop3()) continue;
+          for (var _iterator9 = _createForOfIteratorHelperLoose(moves), _step9; !(_step9 = _iterator9()).done;) {
+            if (_loop4()) continue;
           }
           return done;
         }
@@ -66750,8 +66792,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           var moveDone = this.moveDone;
           var land = at;
           var lastLand = {};
-          for (var _iterator9 = _createForOfIteratorHelperLoose(evs), _step9; !(_step9 = _iterator9()).done;) {
-            var ev = _step9.value;
+          for (var _iterator10 = _createForOfIteratorHelperLoose(evs), _step10; !(_step10 = _iterator10()).done;) {
+            var ev = _step10.value;
             if (ev.t !== 'pearl') continue;
             var cup = this.cupsById.get(ev.cup);
             var vp = this.jp[ev.id];
@@ -66764,8 +66806,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             land = Math.max(land, start + fd);
           }
           ch.land = Math.max(ch.land, land);
-          var _loop4 = function _loop4() {
-            var ev = _step10.value;
+          var _loop5 = function _loop5() {
+            var ev = _step11.value;
             if (ev.t === 'seal') {
               var _cup = _this10.cupsById.get(ev.cup);
               var t = (lastLand[ev.cup] || land) + 0.05;
@@ -66803,16 +66845,16 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             }
           };
 
-          for (var _iterator10 = _createForOfIteratorHelperLoose(evs), _step10; !(_step10 = _iterator10()).done;) {
-            _loop4();
+          for (var _iterator11 = _createForOfIteratorHelperLoose(evs), _step11; !(_step11 = _iterator11()).done;) {
+            _loop5();
           }
           // 沉降：赶在下一拍之前挪到位
           var mv = evs.find(function (e) {
             return e.t === 'move';
           });
           var roundEnd = Math.max(at + 0.1, mv ? this.animMoves(mv.moves, at + Math.min(0.05, iv * 0.3), STEP, iv * 0.7) : 0);
-          var _loop5 = function _loop5() {
-            var ev = _step11.value;
+          var _loop6 = function _loop6() {
+            var ev = _step12.value;
             if (ev.t === 'reveal') {
               var _vp = _this10.jp[ev.id];
               if (_vp) _this10.tl.call(roundEnd, function () {
@@ -66820,8 +66862,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
               });
             }
           };
-          for (var _iterator11 = _createForOfIteratorHelperLoose(evs), _step11; !(_step11 = _iterator11()).done;) {
-            _loop5();
+          for (var _iterator12 = _createForOfIteratorHelperLoose(evs), _step12; !(_step12 = _iterator12()).done;) {
+            _loop6();
           }
           return land;
         }
@@ -66943,6 +66985,13 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           }, {
             begin: function begin() {
               start.copy(vp.owner ? vp.owner.localToWorld(tmp.copy(vp.local)) : vp.pos);
+              // 出口嘴口挂着的那颗大珍珠就是它：从嘴口原样（原来的大小）飞走，挂着的那颗同时收掉
+              var o = _this12.outlets[outlet];
+              if (o && o.pv && o.pvFor === vp && o.k > 0.4) {
+                start.copy(o.g.localToWorld(tmp.copy(o.pv.local)));
+                vp.scale = o.pv.scale;
+                _this12.dropOutletPearl(o);
+              }
               s0 = vp.scale;
               _this12.outletExit(outlet, exit);
               vp.owner = null;
@@ -67125,8 +67174,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
         _proto2.animRevive = function animRevive(e, state) {
           var _this15 = this;
           var t0 = this.now;
-          for (var _iterator12 = _createForOfIteratorHelperLoose(e.slots), _step12; !(_step12 = _iterator12()).done;) {
-            var i = _step12.value;
+          for (var _iterator13 = _createForOfIteratorHelperLoose(e.slots), _step13; !(_step13 = _iterator13()).done;) {
+            var i = _step13.value;
             this.slots[i] = {
               kind: 'temp',
               open: true,
@@ -67231,6 +67280,7 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           this.hideSpots();
           var o = this.addNozzle(state.outlets[e.outlet], e.outlet, state);
           this.outlets[e.outlet] = o;
+          this.fitOutlets();
           var s1 = o.g.scale.x;
           o.g.scale.setScalar(0.001);
           this.tl.add(t0, 0.4, function (k) {
@@ -67325,8 +67375,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
         };
         _proto2.hideSpots = function hideSpots() {
           if (!this.spots) return;
-          for (var _iterator13 = _createForOfIteratorHelperLoose(this.spots), _step13; !(_step13 = _iterator13()).done;) {
-            var sp = _step13.value;
+          for (var _iterator14 = _createForOfIteratorHelperLoose(this.spots), _step14; !(_step14 = _iterator14()).done;) {
+            var sp = _step14.value;
             this.jar.g.remove(sp.g);
             sp.g.traverse(function (m) {
               return m.geometry && m.geometry.dispose();
@@ -67443,9 +67493,12 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             var c = sl.cup && sl.cup.state === 'bar' && sl.cup.got < sl.cup.recipe.length ? sl.cup.recipe[sl.cup.got] : null;
             ring.material = c ? _this20.M.ringColor[c] : sl.kind === 'lock' && !sl.open ? _this20.M.coasterLock : _this20.M.coasterRing;
           });
-          for (var _iterator14 = _createForOfIteratorHelperLoose(this.pearls.all), _step14; !(_step14 = _iterator14()).done;) {
-            var p = _step14.value;
-            if (p.pop > 0 && p.pop < 1) p.pop = Math.min(1, p.pop + sdt / 0.35);else if (p.pop >= 1) p.pop = 0;
+          for (var _i3 = 0, _arr3 = [this.pearls, this.tapPearls]; _i3 < _arr3.length; _i3++) {
+            var pool = _arr3[_i3];
+            for (var _iterator15 = _createForOfIteratorHelperLoose(pool.all), _step15; !(_step15 = _iterator15()).done;) {
+              var p = _step15.value;
+              if (p.pop > 0 && p.pop < 1) p.pop = Math.min(1, p.pop + sdt / 0.35);else if (p.pop >= 1) p.pop = 0;
+            }
           }
           this.pearls.step(sdt);
           if (this.spots) this.spots.forEach(function (sp, i) {
@@ -67460,8 +67513,9 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             c.g.position.y = LANE_TOP + (pressed ? 0.3 : hintHere ? Math.abs(Math.sin(now * 7)) * 0.35 : Math.abs(Math.sin(now * 2.2 + l)) * 0.04);
           });
           this.updateCat(sdt, now);
-          this.updateOutletSigns(dt, now);
+          this.updateOutletPearls(sdt, now);
           this.pearls.sync(now);
+          this.tapPearls.sync(now);
           // 镜头过渡
           if (this.camAnim) {
             var a = this.camAnim;
@@ -67481,58 +67535,117 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           ch.update(dt);
         }
 
-        // 出口在等哪种口味：画面停下来时，嘴口探出一颗同色小珠，小牌轻轻跳。
-        // 不改罐子里的珍珠，也不贴平面色点。正在落珠、加出口、揭晓时小珠收回。
+        // 出口嘴口挂着的那颗大珍珠：规则里正堵在这个出口的那颗真珠，放大了挂在嘴口（tapPearls 池里另拿一颗，材质、颜色和罐里的一模一样）。
+        // 真珠在出口那一格落稳 OUT_HOLD 秒以上才亮出来：连着落的出口每拍都在换珠，不闪；别的出口在落、这个出口没杯接，它照样挂着。
+        // 真珠一飞走，挂着的这颗就是它（flyPearl 从嘴口起飞）。结冰的出口、揭晓谜底时不挂。罐子里的珍珠一颗不动。
+        // 以前这里是嘴口下面的口味小牌（白底圆牌 + 图标）：正下方摆了杯就得收起来，平时颜色面积也小，11-12 起由这颗珍珠代替。
         ;
 
-        _proto2.updateOutletSigns = function updateOutletSigns(dt, now) {
-          var _this21 = this;
+        _proto2.updateOutletPearls = function updateOutletPearls(dt, now) {
           if (!this.outlets || !this.state || !this.jar) return;
           var s = this.state,
-            show = this.tl.idle && !this.spots && !this.revealMesh;
-          var _loop6 = function _loop6() {
-            var out = _step15.value;
-            var o = s.outlets[out.i],
-              ud = out.g.userData;
-            var c = null;
-            if (show && o && isOpen(s, o)) {
-              var id = s.g[o.y * s.W + o.x];
-              if (id >= 0 && !s.hm[id]) c = s.col[id];
+            lock = !!this.revealMesh;
+          var calm = !this.pearls.jelly; // “减少动态”：不回弹、不呼吸
+          for (var _iterator16 = _createForOfIteratorHelperLoose(this.outlets), _step16; !(_step16 = _iterator16()).done;) {
+            var out = _step16.value;
+            var o = s.outlets[out.i];
+            var id = -1;
+            if (!lock && o && !out.ice && isOpen(s, o)) id = s.g[o.y * s.W + o.x];
+            if (id !== out.pid) {
+              out.pid = id;
+              out.since = now;
             }
-            if (c !== out.sign) {
-              out.sign = c;
-              if (c) {
-                ud.sign.material.map = signTexture(c);
-                ud.sign.material.needsUpdate = true;
-                if (ud.bead) {
-                  var hex = FLAVORS[c].pearl;
-                  ud.bead.material.color.setHex(hex);
-                  ud.bead.material.emissive.setHex(hex);
-                }
-              } else if (ud.bead) {
-                ud.bead.material.color.setHex(0x34262e);
-                ud.bead.material.emissive.setHex(0x000000);
-              }
+            var vp = id >= 0 ? this.jp[id] : null;
+            var ok = !!vp && vp.alive && vp.owner === this.jar.g && now - out.since >= OUT_HOLD;
+            if (ok) ok = vp.local.distanceToSquared(this.cellLocal(o.x, o.y, tmp)) < 1e-4;
+            var key = ok ? vp.hidden ? '?' : vp.color : null;
+            if (!key) out.sign = null;else if (!out.pv || out.pvFor !== vp || out.sign !== key) this.setOutletPearl(out, vp, key);
+            var pv = out.pv;
+            if (!pv) continue;
+            if (key) out.k = Math.min(1, out.k + dt / OUT_IN);else if ((out.k -= dt / OUT_OUT) <= 0) {
+              this.dropOutletPearl(out);
+              continue;
             }
-            // 小牌正下方的吧台位上有杯子时收起来：杯顶的数字牌在画面上正好压着小牌，两样叠在一起都看不清。
-            // 小牌被杯子挡住时，看嘴口那块珠子色
-            var covered = false;
-            if (c && _this21.slots) {
-              var sp = out.g.localToWorld(tmp.set(0, ud.exitY - 0.31, 0));
-              var top = COUNTER_TOP + (CUP_H + 0.5) * (_this21.cupScale || 1) + 0.37;
-              covered = sp.y < top && _this21.slots.some(function (sl) {
-                return sl.cup && Math.abs(sl.x - sp.x) < 0.72;
-              });
+            var boost = (out.g.userData.boost || 1) * (out.tight ? 0.84 : 1);
+            var grow = key && !calm ? ease.outBack(out.k, 2.2) : out.k;
+            pv.scale = this.pscale * boost * Math.max(0.001, grow);
+            // 挂在嘴口像一滴要掉没掉的水：慢慢拉长一点再缩回去，顶上贴着嘴口不动（各出口错开）
+            var sy = calm ? 1 : 1 + OUT_DRIP * Math.sin(now * 2.1 + out.i * 1.9);
+            pv.local.copy(out.g.userData.pearl);
+            pv.local.y -= (sy - 1) * PEARL_R * pv.scale / (out.g.scale.x || 1);
+            // 着色器会按高度把珍珠压扁（罐底那一排扁 12%）。嘴口这颗是挂着的，要圆：算出它在这个高度被压了多少，反着拉回去
+            var q = 1 - this.pearlSquashAt(out.g.localToWorld(tmp.copy(pv.local)).y);
+            pv.sy = sy / q;
+            pv.sx = Math.sqrt(q / sy);
+            if (pv.mark) {
+              // 神秘珍珠的问号：贴在朝镜头那一面的正中（镜头俯角 40°），不被珠子自己挡住
+              var r = PEARL_R * pv.scale * 1.06;
+              (pv.markAt || (pv.markAt = v3())).set(0, r * 0.643, r * 0.766);
+              pv.mark.scale.setScalar(0.3 * Math.min(1, this.pscale || 1) * boost * Math.max(0.001, out.k));
             }
-            out.signK = damp(out.signK, c && !covered ? 1 : 0, 14, dt);
-            ud.sign.visible = out.signK > 0.02;
-            ud.sign.material.opacity = out.signK;
-            ud.sign.scale.setScalar(Math.max(0.001, out.signK * (0.5 + 0.04 * Math.sin(now * 5 + out.i))));
-            if (ud.bead) ud.bead.visible = !!c;
-          };
-          for (var _iterator15 = _createForOfIteratorHelperLoose(this.outlets), _step15; !(_step15 = _iterator15()).done;) {
-            _loop6();
           }
+        }
+        // 和 boba-pearl.effect 的 PearlSquashScale 同一个算法：世界高度 y 处的珍珠竖向被压掉多少（0.12 = 扁 12%）
+        ;
+
+        _proto2.pearlSquashAt = function pearlSquashAt(y) {
+          var _m$squash;
+          var m = this.M.pearl,
+            b0 = this.jar.g.position.y,
+            b1 = b0 + this.jarH,
+            fade = m.fade || 0.6;
+          var load = Math.min(1, Math.max(0, (b1 - y) / Math.max(b1 - b0, 0.001)));
+          var t = Math.min(1, Math.max(0, (y - (b0 - fade)) / fade));
+          return (0.05 + 0.07 * load) * t * t * (3 - 2 * t) * ((_m$squash = m.squash) != null ? _m$squash : 1);
+        };
+        _proto2.setOutletPearl = function setOutletPearl(out, vp, key) {
+          var pv = out.pv;
+          if (!pv) {
+            pv = out.pv = this.tapPearls.alloc(vp.color, vp.hidden);
+            pv.owner = out.g;
+            pv.local.copy(out.g.userData.pearl);
+            pv.scale = 0.001;
+            out.k = 0;
+          } else if (out.pvFor !== vp) out.k = Math.min(out.k, 0.35); // 换了一颗：再鼓一下
+          pv.color = vp.color;
+          pv.hidden = vp.hidden;
+          if (pv.hidden && !pv.mark) this.addMark(pv);
+          if (!pv.hidden && pv.mark) {
+            // 神秘珍珠在罐里显形了：挂着的这颗跟着摘掉问号、跳一下
+            pv.mark.parent && pv.mark.parent.remove(pv.mark);
+            pv.mark = null;
+            pv.pop = 0.001;
+          }
+          out.pvFor = vp;
+          out.sign = key;
+        };
+        _proto2.dropOutletPearl = function dropOutletPearl(out) {
+          if (out.pv) this.tapPearls.release(out.pv);
+          out.pv = out.pvFor = null;
+          out.sign = null;
+          out.k = 0;
+        }
+        // 调参用：BobaLab.view.rebuildNozzles({ len: 0.12 }) 按新参数（models.NOZZLE）把出口重建一遍，不用重新构建
+        ;
+
+        _proto2.rebuildNozzles = function rebuildNozzles(P) {
+          var _this21 = this;
+          Object.assign(NOZZLE, P || {});
+          var s = this.state;
+          for (var _iterator17 = _createForOfIteratorHelperLoose(this.outlets), _step17; !(_step17 = _iterator17()).done;) {
+            var out = _step17.value;
+            this.dropOutletPearl(out);
+            this.jar.g.remove(out.g);
+            if (out.ice) {
+              this.jar.g.remove(out.ice.g);
+              this.jar.g.remove(out.ice.sprite);
+            }
+          }
+          this.outlets = s.outlets.map(function (o, i) {
+            return _this21.addNozzle(o, i, s);
+          });
+          this.fitOutlets();
+          return NOZZLE;
         };
         _proto2.pick = function pick(ndc) {
           this.ray = this.ray || new Raycaster();
@@ -67593,7 +67706,7 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           if (this.jar) out.jar = this.toScreen(this.jar.g.localToWorld(tmp2.set(0, this.jarH / 2, 0)), rect);
           return out;
         }
-        // 罐底出口最靠上的屏幕高度：大号甜品师弹出来不能挡住出口
+        // 罐底出口最靠上的屏幕高度（嘴口挂着的大珍珠的珠心）：大号甜品师弹出来不能挡住出口
         ;
 
         _proto2.outletTop = function outletTop(rect) {
@@ -67673,15 +67786,15 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             var at = function at(x, y, z) {
               return pts.push(v3().set(jp.x + x, jp.y + y, jp.z + z));
             };
-            for (var _iterator16 = _createForOfIteratorHelperLoose(this.outlets || []), _step16; !(_step16 = _iterator16()).done;) {
-              var o = _step16.value;
+            for (var _iterator18 = _createForOfIteratorHelperLoose(this.outlets || []), _step18; !(_step18 = _iterator18()).done;) {
+              var o = _step18.value;
               var _p = this.cellLocal(o.x, o.y, v3());
               at(_p.x - 0.6, _p.y - c * 0.5 - 0.75, d);
               at(_p.x + 0.6, _p.y - c * 0.5 - 0.75, d);
             }
             if (mode === 'outlet' && this.spots) {
-              for (var _iterator17 = _createForOfIteratorHelperLoose(this.spots), _step17; !(_step17 = _iterator17()).done;) {
-                var sp = _step17.value;
+              for (var _iterator19 = _createForOfIteratorHelperLoose(this.spots), _step19; !(_step19 = _iterator19()).done;) {
+                var sp = _step19.value;
                 var p = sp.g.position;
                 at(p.x - 0.5, p.y - 0.5, p.z);
                 at(p.x + 0.5, p.y + 0.5, p.z);
@@ -67799,8 +67912,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           var cam = this.camera;
           var dir = v3().set(0, -Math.sin(MathUtils.degToRad(pitch)), -Math.cos(MathUtils.degToRad(pitch))).normalize();
           var target = v3();
-          for (var _iterator18 = _createForOfIteratorHelperLoose(pts), _step18; !(_step18 = _iterator18()).done;) {
-            var p = _step18.value;
+          for (var _iterator20 = _createForOfIteratorHelperLoose(pts), _step20; !(_step20 = _iterator20()).done;) {
+            var p = _step20.value;
             target.add(p);
           }
           target.multiplyScalar(1 / Math.max(1, pts.length));
@@ -67813,8 +67926,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
               maxX = -1,
               minY = 1,
               maxY = -1;
-            for (var _iterator19 = _createForOfIteratorHelperLoose(pts), _step19; !(_step19 = _iterator19()).done;) {
-              var p = _step19.value;
+            for (var _iterator21 = _createForOfIteratorHelperLoose(pts), _step21; !(_step21 = _iterator21()).done;) {
+              var p = _step21.value;
               tmp.copy(p).project(cam);
               minX = Math.min(minX, tmp.x);
               maxX = Math.max(maxX, tmp.x);
@@ -67971,12 +68084,12 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
         ;
 
         _proto2.tuckForRack = function tuckForRack() {
-          for (var _iterator20 = _createForOfIteratorHelperLoose(this.lanes || []), _step20; !(_step20 = _iterator20()).done;) {
-            var lane = _step20.value;
+          for (var _iterator22 = _createForOfIteratorHelperLoose(this.lanes || []), _step22; !(_step22 = _iterator22()).done;) {
+            var lane = _step22.value;
             if (lane.g) lane.g.visible = false;
           }
-          for (var _iterator21 = _createForOfIteratorHelperLoose(this.slots || []), _step21; !(_step21 = _iterator21()).done;) {
-            var sl = _step21.value;
+          for (var _iterator23 = _createForOfIteratorHelperLoose(this.slots || []), _step23; !(_step23 = _iterator23()).done;) {
+            var sl = _step23.value;
             if (sl.cup && sl.cup.g) sl.cup.g.visible = false;
           }
           if (this.jar) this.jar.g.visible = false;
