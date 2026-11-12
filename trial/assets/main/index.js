@@ -65562,7 +65562,7 @@ System.register("chunks:///_virtual/ui.ts", ['./rollupPluginModLoBabelHelpers.js
 });
 
 System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.js', 'cc', './index.ts', './tween.ts', './models.ts', './art2d.ts', './palette.ts', './rules.ts', './items.ts', './pictures.ts', './math.ts', './object.ts', './geometry.ts', './material.ts'], function (exports) {
-  var _createForOfIteratorHelperLoose, _createClass, cclegacy, ease, Timeline, damp, buildMachine, COUNTER_TOP, buildJar, buildLane, buildCoaster, buildCounter, LANE_TOP, buildCup, buildNozzle, cupPearlLocal, setLiquid, CUP_H, cupPearlScale, PEARL_R, textTexture, badgeTexture, iconTexture, signTexture, FLAVORS, MYSTERY, isOpen, itemCells, loadArt, Color, Vector3, MathUtils, Vector2, Quaternion, Matrix4, Mesh, Sprite, Group, InstancedMesh, Raycaster, BoxGeometry, CylinderGeometry, RoundedBoxGeometry, CircleGeometry, TorusGeometry, SphereGeometry, MeshBasicMaterial, disposeVariants, SpriteMaterial, MeshStandardMaterial, CanvasTexture, SRGBColorSpace, DynamicDrawUsage;
+  var _createForOfIteratorHelperLoose, _createClass, cclegacy, ease, Timeline, damp, buildMachine, COUNTER_TOP, buildJar, buildLane, buildCoaster, buildCounter, LANE_TOP, buildCup, buildNozzle, cupPearlLocal, setLiquid, CUP_H, cupPearlScale, PEARL_R, textTexture, sparkTexture, badgeTexture, iconTexture, signTexture, FLAVORS, MYSTERY, isOpen, itemCells, loadArt, Color, Vector3, MathUtils, Vector2, Quaternion, Matrix4, Mesh, Sprite, Group, InstancedMesh, Raycaster, BoxGeometry, CylinderGeometry, RoundedBoxGeometry, CircleGeometry, TorusGeometry, SphereGeometry, MeshBasicMaterial, disposeVariants, SpriteMaterial, AdditiveBlending, MeshStandardMaterial, CanvasTexture, SRGBColorSpace, DynamicDrawUsage;
   return {
     setters: [function (module) {
       _createForOfIteratorHelperLoose = module.createForOfIteratorHelperLoose;
@@ -65590,6 +65590,7 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
       PEARL_R = module.PEARL_R;
     }, function (module) {
       textTexture = module.textTexture;
+      sparkTexture = module.sparkTexture;
       badgeTexture = module.badgeTexture;
       iconTexture = module.iconTexture;
       signTexture = module.signTexture;
@@ -65626,6 +65627,7 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
       MeshBasicMaterial = module.MeshBasicMaterial;
       disposeVariants = module.disposeVariants;
       SpriteMaterial = module.SpriteMaterial;
+      AdditiveBlending = module.AdditiveBlending;
       MeshStandardMaterial = module.MeshStandardMaterial;
       CanvasTexture = module.CanvasTexture;
       SRGBColorSpace = module.SRGBColorSpace;
@@ -65651,6 +65653,7 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
       var tmpQ = new Quaternion();
       var tmpS = v3();
       var tmpC = new Color();
+      var hiC = new Color();
       var WHITE = new Color(0xffffff);
       var STEP = 0.07; // 珍珠在罐里挪一格的时间
       var DOCK_DUR = 0.36; // 杯子从杯队飞上吧台的时间（点下去马上起飞）
@@ -65833,14 +65836,21 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             var jy = 1 + p.jd,
               jx = p.jd ? 1 / Math.sqrt(jy) : 1;
             if (p.jd) w.y += p.jd * PEARL_R * p.scale;
-            tmpS.set(p.scale * p.sx * pop * jx, p.scale * p.sy * pop * jy, p.scale * p.sx * pop * jx);
-            tmpM.compose(w, tmpQ.identity(), tmpS);
-            this.mesh.setMatrixAt(p.i, tmpM);
             var base = p.hidden ? MYSTERY.pearl : FLAVORS[p.color].pearl;
             tmpC.set(base);
-            var glow = p.hi > 0 ? p.hi * (0.55 + 0.45 * Math.sin(time * 7 + p.i)) : 0;
-            // 高亮分 4 档（每种颜色只派生几种材质）
-            if (glow > 0) tmpC.lerp(WHITE, Math.round(glow * 4) / 8);
+            // 出口那一列：亮到口味的高光色，再掺一点白，轻轻呼吸。分档是为了少派生材质
+            var lift = 1;
+            if (p.hi > 0 && !p.hidden) {
+              var pulse = 0.78 + 0.22 * Math.sin(time * 5.5 + p.i * 0.4);
+              var amt = Math.min(1, p.hi * pulse);
+              hiC.set(FLAVORS[p.color].hi);
+              tmpC.lerp(hiC, 0.85);
+              tmpC.lerp(WHITE, 0.42 * amt);
+              lift = 1 + 0.14 * p.hi;
+            }
+            tmpS.set(p.scale * p.sx * pop * jx * lift, p.scale * p.sy * pop * jy * lift, p.scale * p.sx * pop * jx * lift);
+            tmpM.compose(w, tmpQ.identity(), tmpS);
+            this.mesh.setMatrixAt(p.i, tmpM);
             this.mesh.setColorAt(p.i, tmpC);
             if (p.mark) {
               p.mark.position.copy(w);
@@ -66368,6 +66378,20 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           sign.renderOrder = 9;
           nz.add(sign);
           ud.sign = sign;
+          // 嘴口那颗珍珠后面一圈同色光：口沿细环不够显眼时，先看到这一团颜色
+          var halo = new Sprite(new SpriteMaterial({
+            map: sparkTexture(),
+            color: 0xffffff,
+            transparent: true,
+            depthTest: false,
+            blending: AdditiveBlending,
+            opacity: 0
+          }));
+          halo.material.userData.own = true;
+          halo.visible = false;
+          halo.renderOrder = 4;
+          this.jar.g.add(halo);
+          ud.halo = halo;
           var out = {
             i: i,
             x: o.x,
@@ -67483,8 +67507,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           ch.update(dt);
         }
 
-        // 出口在等哪种口味：画面停下来（落珠、沉降都播完）时，打开的出口把卡箍染成出口那颗珍珠的颜色，前面的小牌轻轻跳；
-        // 正在落珠、加出口选位置、揭晓时都收起来。珍珠变小以后，一眼就看得清每个出口要什么杯
+        // 出口在等哪种口味：画面停下来时，口沿细环染色，小牌轻轻跳，正上方那一列珍珠亮起来。
+        // 正在落珠、加出口选位置、揭晓时都收起来。
         ;
 
         _proto2.updateOutletSigns = function updateOutletSigns(dt, now) {
@@ -67528,9 +67552,50 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             ud.sign.visible = out.signK > 0.02;
             ud.sign.material.opacity = out.signK;
             ud.sign.scale.setScalar(Math.max(0.001, out.signK * (0.5 + 0.04 * Math.sin(now * 5 + out.i))));
+            var halo = ud.halo;
+            if (halo) {
+              if (c) {
+                _this21.cellLocal(o.x, o.y, halo.position);
+                halo.position.z += _this21.jar.depth * 0.5 + 0.02;
+                halo.material.color.setHex(FLAVORS[c].hi);
+                var pulse = 0.85 + 0.15 * Math.sin(now * 5 + out.i);
+                halo.material.opacity = 0.85 * pulse;
+                halo.scale.setScalar(0.95 * pulse);
+                halo.visible = true;
+              } else halo.visible = false;
+            }
           };
           for (var _iterator15 = _createForOfIteratorHelperLoose(this.outlets), _step15; !(_step15 = _iterator15()).done;) {
             _loop6();
+          }
+          this.markOutletPearls(show);
+        }
+        // 每个打开的出口，正上方那一列珍珠亮起来：口沿细环不够显眼时，看这一列就知道要什么口味。
+        // 嘴口那一颗最亮，往上同列稍弱。落珠、选出口、揭晓时 show 为假，高亮收掉。
+        ;
+
+        _proto2.markOutletPearls = function markOutletPearls(show) {
+          var list = this.pearls && this.pearls.all;
+          if (!list) return;
+          for (var _iterator16 = _createForOfIteratorHelperLoose(list), _step16; !(_step16 = _iterator16()).done;) {
+            var p = _step16.value;
+            if (p.hi) p.hi = 0;
+          }
+          if (!show || !this.state || !this.jp) return;
+          var s = this.state,
+            W = s.W;
+          for (var _iterator17 = _createForOfIteratorHelperLoose(this.outlets), _step17; !(_step17 = _iterator17()).done;) {
+            var out = _step17.value;
+            if (!out.sign) continue;
+            var o = s.outlets[out.i];
+            if (!o) continue;
+            for (var y = 0; y <= o.y; y++) {
+              var id = s.g[y * W + o.x];
+              if (id < 0) continue;
+              var vp = this.jp[id];
+              if (!vp || !vp.alive || vp.hidden) continue;
+              vp.hi = Math.max(vp.hi, y === o.y ? 1 : 0.62);
+            }
           }
         };
         _proto2.pick = function pick(ndc) {
@@ -67672,15 +67737,15 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             var at = function at(x, y, z) {
               return pts.push(v3().set(jp.x + x, jp.y + y, jp.z + z));
             };
-            for (var _iterator16 = _createForOfIteratorHelperLoose(this.outlets || []), _step16; !(_step16 = _iterator16()).done;) {
-              var o = _step16.value;
+            for (var _iterator18 = _createForOfIteratorHelperLoose(this.outlets || []), _step18; !(_step18 = _iterator18()).done;) {
+              var o = _step18.value;
               var _p = this.cellLocal(o.x, o.y, v3());
               at(_p.x - 0.6, _p.y - c * 0.5 - 0.75, d);
               at(_p.x + 0.6, _p.y - c * 0.5 - 0.75, d);
             }
             if (mode === 'outlet' && this.spots) {
-              for (var _iterator17 = _createForOfIteratorHelperLoose(this.spots), _step17; !(_step17 = _iterator17()).done;) {
-                var sp = _step17.value;
+              for (var _iterator19 = _createForOfIteratorHelperLoose(this.spots), _step19; !(_step19 = _iterator19()).done;) {
+                var sp = _step19.value;
                 var p = sp.g.position;
                 at(p.x - 0.5, p.y - 0.5, p.z);
                 at(p.x + 0.5, p.y + 0.5, p.z);
@@ -67798,8 +67863,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           var cam = this.camera;
           var dir = v3().set(0, -Math.sin(MathUtils.degToRad(pitch)), -Math.cos(MathUtils.degToRad(pitch))).normalize();
           var target = v3();
-          for (var _iterator18 = _createForOfIteratorHelperLoose(pts), _step18; !(_step18 = _iterator18()).done;) {
-            var p = _step18.value;
+          for (var _iterator20 = _createForOfIteratorHelperLoose(pts), _step20; !(_step20 = _iterator20()).done;) {
+            var p = _step20.value;
             target.add(p);
           }
           target.multiplyScalar(1 / Math.max(1, pts.length));
@@ -67812,8 +67877,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
               maxX = -1,
               minY = 1,
               maxY = -1;
-            for (var _iterator19 = _createForOfIteratorHelperLoose(pts), _step19; !(_step19 = _iterator19()).done;) {
-              var p = _step19.value;
+            for (var _iterator21 = _createForOfIteratorHelperLoose(pts), _step21; !(_step21 = _iterator21()).done;) {
+              var p = _step21.value;
               tmp.copy(p).project(cam);
               minX = Math.min(minX, tmp.x);
               maxX = Math.max(maxX, tmp.x);
@@ -67970,12 +68035,12 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
         ;
 
         _proto2.tuckForRack = function tuckForRack() {
-          for (var _iterator20 = _createForOfIteratorHelperLoose(this.lanes || []), _step20; !(_step20 = _iterator20()).done;) {
-            var lane = _step20.value;
+          for (var _iterator22 = _createForOfIteratorHelperLoose(this.lanes || []), _step22; !(_step22 = _iterator22()).done;) {
+            var lane = _step22.value;
             if (lane.g) lane.g.visible = false;
           }
-          for (var _iterator21 = _createForOfIteratorHelperLoose(this.slots || []), _step21; !(_step21 = _iterator21()).done;) {
-            var sl = _step21.value;
+          for (var _iterator23 = _createForOfIteratorHelperLoose(this.slots || []), _step23; !(_step23 = _iterator23()).done;) {
+            var sl = _step23.value;
             if (sl.cup && sl.cup.g) sl.cup.g.visible = false;
           }
           if (this.jar) this.jar.g.visible = false;
