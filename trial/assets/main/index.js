@@ -59450,8 +59450,8 @@ System.register("chunks:///_virtual/models.ts", ['./rollupPluginModLoBabelHelper
         PEARL_BAND.h = H * c;
         return g;
       }
-      // 罐底出口：贴在罐框上的小卡箍 + 短一截奶油嘴。嘴里一块不受光的色片，等口味时涂成那颗珠子的颜色。
-      // 厚唇环像一排嘴，细环在手机上又看不清，整列珍珠发亮会把旁边冲淡。色片和珠子同色、大约一颗珠那么大，嘴身仍是奶油色。
+      // 罐底出口：贴在罐框上的小卡箍 + 短一截奶油嘴。等口味时，嘴口探出一颗和珠子同色的小珠。
+      // 厚唇环像嘴，贴在前面的平面色点像贴纸。小珠嵌在口里，颜色就是正要掉下来的那颗。
       var NOZZLE_TILT = 46 * Math.PI / 180;
       var NOZZLE_BOOST = 1.12;
       function buildNozzle(M, s) {
@@ -59477,17 +59477,19 @@ System.register("chunks:///_virtual/models.ts", ['./rollupPluginModLoBabelHelper
         collar.position.y = -0.14;
         var funnelInk = new Mesh(new CylinderGeometry(0.17, 0.13, 0.13, 24), M.ink);
         funnelInk.position.y = -0.06;
-        // 嘴口色片：不受光，颜色就是珠子的颜色。可可细边只描轮廓，不参与染色
-        var lipInk = new Mesh(new TorusGeometry(0.155, 0.016, 6, 24), M.ink);
+        var lipInk = new Mesh(new TorusGeometry(0.118, 0.014, 6, 24), M.ink);
         lipInk.rotation.x = Math.PI / 2;
-        lipInk.position.y = -0.172;
-        var fill = new Mesh(new CircleGeometry(0.15, 24), new MeshBasicMaterial({
+        lipInk.position.y = -0.168;
+        // 嵌在口里的小珠，比口沿略探出来，正面看得到颜色
+        var bead = new Mesh(new SphereGeometry(0.105, 18, 14), new MeshStandardMaterial({
           color: 0x34262e,
-          side: DoubleSide
+          emissive: 0x000000,
+          emissiveIntensity: 0.45,
+          roughness: 0.28
         }));
-        fill.rotation.x = Math.PI / 2;
-        fill.position.y = -len + 0.006;
-        spout.add(merged([funnel, collar], M.cream), merged([funnelInk, lipInk], M.ink), fill);
+        bead.position.y = -0.2;
+        bead.visible = false;
+        spout.add(merged([funnel, collar], M.cream), merged([funnelInk, lipInk], M.ink), bead);
         g.add(cuff, band, cuffInk, spout);
         // 整体再放大一圈（绮光的建议 C）：原来嘴只有一颗珍珠宽，手机上容易被满罐的彩色珍珠盖过去
         g.scale.setScalar(s * NOZZLE_BOOST);
@@ -59499,7 +59501,7 @@ System.register("chunks:///_virtual/models.ts", ['./rollupPluginModLoBabelHelper
         g.userData.exitZ = len * Math.sin(NOZZLE_TILT);
         g.userData.cuff = cuff;
         g.userData.band = band;
-        g.userData.fill = fill;
+        g.userData.bead = bead;
         return g;
       }
 
@@ -65713,22 +65715,6 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
         beadTex.colorSpace = SRGBColorSpace;
         return beadTex;
       }
-
-      // 出口色点：白圆，颜色乘在精灵上。挂在嘴前面、正对镜头，不藏在奶油嘴里
-      var chipTex = null;
-      function outletChipTexture() {
-        if (chipTex) return chipTex;
-        var c = document.createElement('canvas');
-        c.width = c.height = 64;
-        var g = c.getContext('2d');
-        g.fillStyle = '#ffffff';
-        g.beginPath();
-        g.arc(32, 32, 28, 0, Math.PI * 2);
-        g.fill();
-        chipTex = new CanvasTexture(c);
-        chipTex.colorSpace = SRGBColorSpace;
-        return chipTex;
-      }
       function bez(a, b, c, t, out) {
         var u = 1 - t;
         return out.set(u * u * a.x + 2 * u * t * b.x + t * t * c.x, u * u * a.y + 2 * u * t * b.y + t * t * c.y, u * u * a.z + 2 * u * t * b.z + t * t * c.z);
@@ -66362,7 +66348,7 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           this.jar.g.add(nz);
           // 卡箍、色圈各用自己的材质：出口在等哪种口味，就染成那个颜色，前面挂一块口味小牌
           var ud = nz.userData;
-          for (var _i3 = 0, _arr3 = ['cuff', 'band', 'fill']; _i3 < _arr3.length; _i3++) {
+          for (var _i3 = 0, _arr3 = ['cuff', 'band', 'bead']; _i3 < _arr3.length; _i3++) {
             var k = _arr3[_i3];
             ud[k].material = ud[k].material.clone();
             ud[k].material.userData.own = true;
@@ -66380,20 +66366,6 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           sign.renderOrder = 9;
           nz.add(sign);
           ud.sign = sign;
-          // 正对镜头的色点，大约一颗珠那么大，放在嘴口前面。色片藏在嘴里时正面看不见
-          var chip = new Sprite(new SpriteMaterial({
-            map: outletChipTexture(),
-            color: 0x34262e,
-            transparent: true,
-            depthTest: false
-          }));
-          chip.material.userData.own = true;
-          chip.position.set(0, ud.exitY - 0.04, (ud.exitZ || 0) + 0.36);
-          chip.scale.set(0.78, 0.78, 1);
-          chip.renderOrder = 20;
-          chip.visible = false;
-          nz.add(chip);
-          ud.chip = chip;
           var out = {
             i: i,
             x: o.x,
@@ -67509,8 +67481,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           ch.update(dt);
         }
 
-        // 出口在等哪种口味：画面停下来时，嘴口色片涂成那颗珠子的颜色，小牌轻轻跳。
-        // 不改罐子里的珍珠。正在落珠、加出口、揭晓时色片收回深色。
+        // 出口在等哪种口味：画面停下来时，嘴口探出一颗同色小珠，小牌轻轻跳。
+        // 不改罐子里的珍珠，也不贴平面色点。正在落珠、加出口、揭晓时小珠收回。
         ;
 
         _proto2.updateOutletSigns = function updateOutletSigns(dt, now) {
@@ -67532,12 +67504,14 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
               if (c) {
                 ud.sign.material.map = signTexture(c);
                 ud.sign.material.needsUpdate = true;
-                // 色片和正对镜头的色点都用珠子本身的颜色
-                if (ud.fill) ud.fill.material.color.setHex(FLAVORS[c].pearl);
-                if (ud.chip) ud.chip.material.color.setHex(FLAVORS[c].pearl);
-              } else {
-                if (ud.fill) ud.fill.material.color.copy(ud.fillColor);
-                if (ud.chip) ud.chip.material.color.setHex(0x34262e);
+                if (ud.bead) {
+                  var hex = FLAVORS[c].pearl;
+                  ud.bead.material.color.setHex(hex);
+                  ud.bead.material.emissive.setHex(hex);
+                }
+              } else if (ud.bead) {
+                ud.bead.material.color.setHex(0x34262e);
+                ud.bead.material.emissive.setHex(0x000000);
               }
             }
             // 小牌正下方的吧台位上有杯子时收起来：杯顶的数字牌在画面上正好压着小牌，两样叠在一起都看不清。
@@ -67554,7 +67528,7 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             ud.sign.visible = out.signK > 0.02;
             ud.sign.material.opacity = out.signK;
             ud.sign.scale.setScalar(Math.max(0.001, out.signK * (0.5 + 0.04 * Math.sin(now * 5 + out.i))));
-            if (ud.chip) ud.chip.visible = !!c;
+            if (ud.bead) ud.bead.visible = !!c;
           };
           for (var _iterator15 = _createForOfIteratorHelperLoose(this.outlets), _step15; !(_step15 = _iterator15()).done;) {
             _loop6();
