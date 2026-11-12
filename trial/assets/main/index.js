@@ -6511,8 +6511,9 @@ System.register("chunks:///_virtual/game.ts", ['./rollupPluginModLoBabelHelpers.
       var beat = exports('beat', function beat(n) {
         return BEAT_MIN + (BEAT0 - BEAT_MIN) * Math.exp(-n / BEAT_K);
       });
-      // 最后一颗落进杯里后再等这么久，还是落不下去、也没有杯在飞，这一串才算完（这之前摆上能接的杯，连珠接着数）
-      var GRACE = 0.22;
+      // 最后一颗落进杯里后再等这么久，还是落不下去、也没有杯在飞，这一串才算完（这之前摆上能接的杯，连珠接着数）。
+      // 0.5 秒：稍微停一下再摆下一只杯，连珠还续得上；再长就会把本来断开的两串粘在一起（Vincent 11-12，原 0.22）
+      var GRACE = 0.5;
       var newFlow = function newFlow(id) {
         return {
           id: id,
@@ -59449,51 +59450,45 @@ System.register("chunks:///_virtual/models.ts", ['./rollupPluginModLoBabelHelper
         PEARL_BAND.h = H * c;
         return g;
       }
-      // 罐底出口：压在罐框前面的卡箍 + 往前探出去的出口嘴，嘴里一个深色的洞；s 按格子大小缩放。原点在出口那一格的下沿。
-      // 原来的嘴是奶油色、竖直朝下，贴着奶油色的墙几乎看不见，口味小牌又挂在正前面，看上去像一块牌子而不是出口。
-      // 现在嘴朝镜头、朝杯队探出 NOZZLE_TILT（镜头俯角 40°，探得比俯角多，正面才看得见嘴里的洞），
-      // 卡箍和嘴外面描一圈可可色的边（搪胶玩具 + 可可描边，和奶油卡片 UI 一个说法），一眼认得出“珍珠从这里出来”
-      var NOZZLE_TILT = 62 * Math.PI / 180;
-      var NOZZLE_BOOST = 1.2;
+      // 罐底出口：贴在罐框上的小卡箍 + 短一截奶油嘴，口沿一圈细环，嘴里一个小洞。原点在出口那一格的下沿。
+      // 11-09 的厚唇环（卡箍、色圈、唇环三层一起染色）在手机上叠成一排张开的嘴，Vincent 11-12 觉得丑。
+      // 现在嘴身保持奶油色，只把口沿那一圈细环染成在等的口味；可可描边收细，别再裹成第二层唇。
+      var NOZZLE_TILT = 46 * Math.PI / 180;
+      var NOZZLE_BOOST = 1.08;
       function buildNozzle(M, s) {
         if (s === void 0) {
           s = 1;
         }
         var g = new Group();
-        var cuff = new Mesh(new CylinderGeometry(0.26, 0.26, 0.18, 28), M.machine2);
-        cuff.position.y = -0.04;
-        var band = new Mesh(new TorusGeometry(0.26, 0.035, 8, 28), M.mint);
+        var cuff = new Mesh(new CylinderGeometry(0.2, 0.2, 0.1, 28), M.cream);
+        cuff.position.y = -0.02;
+        var band = new Mesh(new TorusGeometry(0.2, 0.02, 8, 28), M.mint);
         band.rotation.x = Math.PI / 2;
-        band.position.y = -0.04;
-        var cuffInk = new Mesh(new CylinderGeometry(0.29, 0.29, 0.22, 28), M.ink);
-        cuffInk.position.y = -0.04;
-        // 出口嘴：奶油色软胶（样板），绕卡箍下沿往前探
-        var pivotY = -0.12,
-          len = 0.34;
+        band.position.y = -0.02;
+        var cuffInk = new Mesh(new CylinderGeometry(0.222, 0.222, 0.12, 28), M.ink);
+        cuffInk.position.y = -0.02;
+        var pivotY = -0.07,
+          len = 0.2;
         var spout = new Group();
         spout.position.y = pivotY;
         spout.rotation.x = -NOZZLE_TILT;
-        var funnel = new Mesh(new CylinderGeometry(0.21, 0.14, 0.2, 24), M.cream2);
-        funnel.position.y = -0.1;
-        var collar = new Mesh(new CylinderGeometry(0.15, 0.15, 0.12, 20), M.cream2);
-        collar.position.y = -0.26;
-        // 嘴口的唇环单独一个网格（不并进嘴身）：view 按出口在等的口味染成杯子的颜色——“洞 + 一圈颜色”一眼读成“这里出这种口味”
-        // （绮光 11-09 的建议 A）。不等杯的时候是草莓色
-        var lip = new Mesh(new TorusGeometry(0.15, 0.052, 10, 24), M.straw);
+        var funnel = new Mesh(new CylinderGeometry(0.15, 0.1, 0.12, 24), M.cream);
+        funnel.position.y = -0.06;
+        var collar = new Mesh(new CylinderGeometry(0.1, 0.1, 0.05, 20), M.cream);
+        collar.position.y = -0.14;
+        // 口沿细环：等口味时只染这一圈（杯套色）。不等杯时是浅草莓色，仍看得出是出口
+        var lip = new Mesh(new TorusGeometry(0.1, 0.022, 8, 24), M.straw);
         lip.rotation.x = Math.PI / 2;
-        lip.position.y = -0.32;
-        var funnelInk = new Mesh(new CylinderGeometry(0.24, 0.17, 0.22, 24), M.ink);
-        funnelInk.position.y = -0.1;
-        var collarInk = new Mesh(new CylinderGeometry(0.18, 0.18, 0.13, 20), M.ink);
-        collarInk.position.y = -0.26;
-        var lipInk = new Mesh(new TorusGeometry(0.15, 0.082, 8, 20), M.ink);
+        lip.position.y = -0.165;
+        var funnelInk = new Mesh(new CylinderGeometry(0.17, 0.12, 0.13, 24), M.ink);
+        funnelInk.position.y = -0.06;
+        var lipInk = new Mesh(new TorusGeometry(0.1, 0.034, 6, 20), M.ink);
         lipInk.rotation.x = Math.PI / 2;
-        lipInk.position.y = -0.32;
-        var hole = new Mesh(new CircleGeometry(0.12, 20), M.hole);
+        lipInk.position.y = -0.165;
+        var hole = new Mesh(new CircleGeometry(0.07, 20), M.hole);
         hole.rotation.x = Math.PI / 2;
-        hole.position.y = -len + 0.005;
-        spout.add(merged([funnel, collar], M.cream2), merged([funnelInk, collarInk, lipInk], M.ink), lip, hole);
-        // 卡箍色圈（cuff/band）照旧由 view 按等待口味染色
+        hole.position.y = -len + 0.004;
+        spout.add(merged([funnel, collar], M.cream), merged([funnelInk, lipInk], M.ink), lip, hole);
         g.add(cuff, band, cuffInk, spout);
         // 整体再放大一圈（绮光的建议 C）：原来嘴只有一颗珍珠宽，手机上容易被满罐的彩色珍珠盖过去
         g.scale.setScalar(s * NOZZLE_BOOST);
@@ -66367,8 +66362,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
             opacity: 0
           }));
           sign.material.userData.own = true;
-          // 小牌挂在出口嘴下面，不再挡在卡箍和嘴的正前面（挡住了就看不出那是出口）。嘴放大以后往上收一点，别垂到吧台上的杯子里
-          sign.position.set(0, ud.exitY - 0.31, ud.exitZ + 0.12);
+          // 小牌挂在嘴口下面一点。嘴缩短以后别再垂太低，否则和杯顶的数字牌叠在一起
+          sign.position.set(0, ud.exitY - 0.2, ud.exitZ + 0.08);
           sign.scale.setScalar(0.001);
           sign.renderOrder = 9;
           nz.add(sign);
@@ -67511,18 +67506,16 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
               if (c) {
                 ud.sign.material.map = signTexture(c);
                 ud.sign.material.needsUpdate = true;
-                ud.cuff.material.color.setHex(FLAVORS[c].hi);
+                // 卡箍保持奶油色，不再和口沿一起染成两层嘴。细环用杯套色，色圈用珍珠色，两圈都细
                 ud.band.material.color.setHex(FLAVORS[c].pearl);
-                // 嘴口的唇环染成这种口味的杯子的颜色（杯套色：黑糖是焦糖色，不会和洞、描边糊成一圈黑）
                 ud.lip.material.color.set(FLAVORS[c].sleeve);
               } else {
-                ud.cuff.material.color.copy(ud.cuffColor);
                 ud.band.material.color.copy(ud.bandColor);
                 ud.lip.material.color.copy(ud.lipColor);
               }
             }
             // 小牌正下方的吧台位上有杯子时收起来：杯顶的数字牌在画面上正好压着小牌，两样叠在一起都看不清。
-            // 出口在等什么口味，这时看卡箍、色圈和唇环的颜色
+            // 出口在等什么口味，这时看口沿细环和色圈；小牌被杯子挡住时也还能认
             var covered = false;
             if (c && _this21.slots) {
               var sp = out.g.localToWorld(tmp.set(0, ud.exitY - 0.31, 0));
