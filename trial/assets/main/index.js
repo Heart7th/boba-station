@@ -59450,11 +59450,10 @@ System.register("chunks:///_virtual/models.ts", ['./rollupPluginModLoBabelHelper
         PEARL_BAND.h = H * c;
         return g;
       }
-      // 罐底出口：贴在罐框上的小卡箍 + 短一截奶油嘴，口沿一圈细环，嘴里一个小洞。原点在出口那一格的下沿。
-      // 11-09 的厚唇环（卡箍、色圈、唇环三层一起染色）在手机上叠成一排张开的嘴，Vincent 11-12 觉得丑。
-      // 现在嘴身保持奶油色，只把口沿那一圈细环染成在等的口味；可可描边收细，别再裹成第二层唇。
+      // 罐底出口：贴在罐框上的小卡箍 + 短一截奶油嘴。嘴里一块不受光的色片，等口味时涂成那颗珠子的颜色。
+      // 厚唇环像一排嘴，细环在手机上又看不清，整列珍珠发亮会把旁边冲淡。色片和珠子同色、大约一颗珠那么大，嘴身仍是奶油色。
       var NOZZLE_TILT = 46 * Math.PI / 180;
-      var NOZZLE_BOOST = 1.08;
+      var NOZZLE_BOOST = 1.12;
       function buildNozzle(M, s) {
         if (s === void 0) {
           s = 1;
@@ -59476,19 +59475,19 @@ System.register("chunks:///_virtual/models.ts", ['./rollupPluginModLoBabelHelper
         funnel.position.y = -0.06;
         var collar = new Mesh(new CylinderGeometry(0.1, 0.1, 0.05, 20), M.cream);
         collar.position.y = -0.14;
-        // 嘴口一圈色环：比细线粗，手机上认得出口味；只有这一圈染色，不再叠第二层唇
-        var lip = new Mesh(new TorusGeometry(0.108, 0.04, 8, 24), M.straw);
-        lip.rotation.x = Math.PI / 2;
-        lip.position.y = -0.168;
-        var funnelInk = new Mesh(new CylinderGeometry(0.17, 0.12, 0.13, 24), M.ink);
+        var funnelInk = new Mesh(new CylinderGeometry(0.17, 0.13, 0.13, 24), M.ink);
         funnelInk.position.y = -0.06;
-        var lipInk = new Mesh(new TorusGeometry(0.108, 0.052, 6, 20), M.ink);
+        // 嘴口色片：不受光，颜色就是珠子的颜色。可可细边只描轮廓，不参与染色
+        var lipInk = new Mesh(new TorusGeometry(0.155, 0.016, 6, 24), M.ink);
         lipInk.rotation.x = Math.PI / 2;
-        lipInk.position.y = -0.168;
-        var hole = new Mesh(new CircleGeometry(0.07, 20), M.hole);
-        hole.rotation.x = Math.PI / 2;
-        hole.position.y = -len + 0.004;
-        spout.add(merged([funnel, collar], M.cream), merged([funnelInk, lipInk], M.ink), lip, hole);
+        lipInk.position.y = -0.172;
+        var fill = new Mesh(new CircleGeometry(0.15, 24), new MeshBasicMaterial({
+          color: 0x34262e,
+          side: DoubleSide
+        }));
+        fill.rotation.x = Math.PI / 2;
+        fill.position.y = -len + 0.006;
+        spout.add(merged([funnel, collar], M.cream), merged([funnelInk, lipInk], M.ink), fill);
         g.add(cuff, band, cuffInk, spout);
         // 整体再放大一圈（绮光的建议 C）：原来嘴只有一颗珍珠宽，手机上容易被满罐的彩色珍珠盖过去
         g.scale.setScalar(s * NOZZLE_BOOST);
@@ -59500,7 +59499,7 @@ System.register("chunks:///_virtual/models.ts", ['./rollupPluginModLoBabelHelper
         g.userData.exitZ = len * Math.sin(NOZZLE_TILT);
         g.userData.cuff = cuff;
         g.userData.band = band;
-        g.userData.lip = lip;
+        g.userData.fill = fill;
         return g;
       }
 
@@ -66347,7 +66346,7 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           this.jar.g.add(nz);
           // 卡箍、色圈各用自己的材质：出口在等哪种口味，就染成那个颜色，前面挂一块口味小牌
           var ud = nz.userData;
-          for (var _i3 = 0, _arr3 = ['cuff', 'band', 'lip']; _i3 < _arr3.length; _i3++) {
+          for (var _i3 = 0, _arr3 = ['cuff', 'band', 'fill']; _i3 < _arr3.length; _i3++) {
             var k = _arr3[_i3];
             ud[k].material = ud[k].material.clone();
             ud[k].material.userData.own = true;
@@ -67480,8 +67479,8 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
           ch.update(dt);
         }
 
-        // 出口在等哪种口味：画面停下来时，嘴口那一圈色环染成口味色，小牌轻轻跳。
-        // 不照亮罐子里的珍珠——整列发亮会把旁边的颜色冲淡，反而看不清。正在落珠、加出口、揭晓时色环收回。
+        // 出口在等哪种口味：画面停下来时，嘴口色片涂成那颗珠子的颜色，小牌轻轻跳。
+        // 不改罐子里的珍珠。正在落珠、加出口、揭晓时色片收回深色。
         ;
 
         _proto2.updateOutletSigns = function updateOutletSigns(dt, now) {
@@ -67503,14 +67502,14 @@ System.register("chunks:///_virtual/view.ts", ['./rollupPluginModLoBabelHelpers.
               if (c) {
                 ud.sign.material.map = signTexture(c);
                 ud.sign.material.needsUpdate = true;
-                // 只染嘴口那一圈。卡箍和色圈保持原色，避免又叠成两层嘴
-                ud.lip.material.color.set(FLAVORS[c].sleeve);
+                // 色片用珠子本身的颜色，不受光，和罐子里那颗对得上
+                ud.fill.material.color.setHex(FLAVORS[c].pearl);
               } else {
-                ud.lip.material.color.copy(ud.lipColor);
+                ud.fill.material.color.copy(ud.fillColor);
               }
             }
             // 小牌正下方的吧台位上有杯子时收起来：杯顶的数字牌在画面上正好压着小牌，两样叠在一起都看不清。
-            // 小牌被杯子挡住时，看嘴口那一圈颜色
+            // 小牌被杯子挡住时，看嘴口那块珠子色
             var covered = false;
             if (c && _this21.slots) {
               var sp = out.g.localToWorld(tmp.set(0, ud.exitY - 0.31, 0));
